@@ -27,7 +27,8 @@ GPS module for Yaesu VX-8DR/DE handheld transceivers with ublox NEO-6M chip and 
 
 ## Questions? Suggestions?
 You are more than welcome to contact me with any questions, suggestions or propositions regarding this project. You can:
-1. Visit [my QRZ.COM profile](https://www.qrz.com/db/4Z7DTF)
+
+1. Visit [my QRZ.COM page](https://www.qrz.com/db/4Z7DTF)
 2. Visit [my Facebook profile](https://www.facebook.com/Dima.Meln)
 3. Write me an email to iosaaris =at= gmail dot com
 
