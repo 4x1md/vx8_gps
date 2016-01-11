@@ -4,24 +4,28 @@ GPS module for Yaesu VX-8DR/DE handheld transceivers with ublox NEO-6M chip and 
 ## Overview
 
 ## Yaesu VX-8DR/DE and NMEA protocol
-### Electrical compatibility
-The NMEA protocol is implemented in the VX-8 in a non-standard way. The first issue is serial port parameters. The original Yaesu FGPS2 module transmits at 9600 bps instead of the standard 4800 bps and uses 3.3V logic level instead of the standard 5V. This isn't a big issue because there are GPS modules which can be configured to transmit at 9600 bps and logic levels can be converted. The GY-GPS6MV2 module came already pre-configured to 9600 bps rate. The ublox NEO-6M chip used in this module has maximum supply voltage of 3.6V. As we see there are no electrical compatibility issues at all.
-### Field length
-The second issue is the protocol implementation. VX-8 requires all the fields of the NMEA sentence to be padded to the maximum possible number of symbols while regular NMEA standart allows fields to be empty. It means that even if there is no GPS fix and all the fields are empty, typical GGA sentence for this transceiver should have the following format:
-```
-$GPGGA,200124.000,0000.0000,N,00000.0000,E,0,00,00.0,00000.0,M,0000.0,M,000.0,0000*46
-```
-Sending a sentence with empty fields will result in gibberish on the GPS screen of VX-8. Let's send the following sentence to the radio and see the output it produces.
+The NMEA protocol is implemented in the VX-8 in a non-standard way. There are two main issues with it: serial port parameters and NMEA sentence format. There is also a data validation issue which is very interesting but less important in this case.
+
+### Port parameters: baud rate and logic levels
+The original Yaesu FGPS2 module transmits at 9600 bps instead of the standard 4800 bps and uses 3.3V logic level instead of the standard 5V. This isn't a big issue because there are GPS modules which can be configured to transmit at 9600 bps and logic levels can be converted. The GY-GPS6MV2 module came already pre-configured to 9600 bps rate. The ublox NEO-6M chip used in this module has maximum supply voltage of 3.6V. As we see there are no electrical compatibility issues at all.
+### NMEA sentence format: field lengths
+VX-8 requires all the fields of the NMEA sentence to be padded to the maximum possible number of symbols while regular NMEA standart allows fields to be empty. It means that if there is no GPS fix, typical GGA message will have the following form:
 ```
 $GPGGA,074222.000,,,,,0,00,99.9,,,,,,0000*6E
 ```
+The radio won't be able to process this message and we'll see gibberish on the display. A correct sentence for this transceiver should have the following format:
+```
+$GPGGA,200124.000,0000.0000,N,00000.0000,E,0,00,00.0,00000.0,M,0000.0,M,000.0,0000*46
+```
+Sending a sentence with empty fields will result in gibberish on the GPS screen of VX-8. Here is what we'll get.
+
 ![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_0.jpg)
 
 Allthough the sentence accords with the standard, the transceiver isn't able to process it correctly.
 
 Actually setting number of sybols in each field is what all this project is about! If the second issue didn't exist we could connect the ublox NEO-6M chip based module directly to the transceiver.
 
-### NMEA sentence validation
+### NMEA data validation
 Here the things get even more interesting. The Yaesu VX-8 does no validation on the NMEA data. When I say no validation, I mean **no validation at all**! Let's look at the following NMEA sentence.
 ```
 $GPGGA,999999.000,73DE.0000,!,Z7DTF.NOPQ,4,1,04
