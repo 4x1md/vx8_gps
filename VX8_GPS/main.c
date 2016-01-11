@@ -99,10 +99,10 @@ int main(void)
 	/* Setup */
 
 	/* PORTD connections:
-	 * pin 7: red led
-	 * pin 5: green led
-	 * pin 4: red led
-	 * pin 2: green led
+	 * pin 7: green led
+	 * pin 5: red led
+	 * pin 4: green led
+	 * pin 2: red led
 	 */
 	DDRD = DDRD | 0B11111100;
 	PORTD = PORTD & 0B00000011;
@@ -358,7 +358,7 @@ bool process_field(void)
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
 			{
-				PORTD = PORTD |= 0B10000000; /* Turn the red LED on. */
+				PORTD = PORTD |= 0B00100000; /* Turn the red LED on. */
 				res = false;
 				break;
 			}
@@ -370,9 +370,9 @@ bool process_field(void)
 		else if (rx_field == 0x02)
 		{
 			if (rx_field_size == 0)
-				PORTD = PORTD |= 0B10000000; /* Red LED on. */
+				PORTD = PORTD |= 0B10100000; /* Red LED on. */
 			else
-				PORTD = PORTD |= 0B00100000; /* Green LED on. */
+				PORTD = PORTD |= 0B10000000; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
 			rx_buf_pos -= rx_field_size;
@@ -479,7 +479,7 @@ bool process_field(void)
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
 			{
-				PORTD = PORTD |= 0B00010000; /* Turn the red LED on. */
+				PORTD = PORTD |= 0B00000100; /* Turn the red LED on. */
 				res = false;
 				break;
 			}
@@ -491,9 +491,9 @@ bool process_field(void)
 		else if (rx_field == 0x03)
 		{
 			if (rx_field_size == 0)
-				PORTD = PORTD |= 0B00010000; /* Red LED on. */
+				PORTD = PORTD |= 0B00000100; /* Red LED on. */
 			else
-				PORTD = PORTD |= 0B00000100; /* Green LED on. */
+				PORTD = PORTD |= 0B00010000; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
 			rx_buf_pos -= rx_field_size;
