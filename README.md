@@ -46,9 +46,13 @@ If you want to try it your self you'll need a standard programming cable (origin
 
 ![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_gps_connections.png)
 
-The hardware is quite simple. GY-GPS6MV2 GPS module transmits its data to the Arduino which does necessary processing and sends it to the transceiver. Allthough the communication between the original Yaesu FGPS2 module and the radio is bi-directional, in my project I decided to make it unidirectional from GPS to radio. Not only is the bi-directional communication useless in this case but also requires one more serial port. This configuration uses only one serial port to communicate with both devices. Voltage divider formed by 240 Ohm and 470 Ohm resistors converts the logic levels from 5V used by Arduino to 3.3V required by the transceiver.
+The hardware is quite simple. GY-GPS6MV2 GPS module transmits its data to the Arduino which does necessary processing and sends it to the transceiver. Allthough the communication between the original Yaesu FGPS2 module and the radio is bi-directional, in my project I decided to make it unidirectional from GPS to radio. Not only is the bi-directional communication useless in this case but also requires one more serial port. This configuration uses only one serial port to communicate with both devices.
 
-Two two-color LEDs are used for indication. The left one blinks red if a GGA message was rejected and green if it was sent to the radio. The right one does the same form RMC messages.
+Important! The serial port on the Arduino board is also used for programming the device. Leaving the GPS connected to the serial RX pin will cause a conflict and make uploading the firmware impossible. That's why there is a switch which disconnects GPS output from serial input.
+
+On the contrary, using USB serial when the transceiver is connected not only is possible but also is recommended for debugging purposes. You can use any terminal program to monitor Arduino's output even when the radio is connected.
+
+Voltage divider formed by 240 Ohm and 470 Ohm resistors converts the logic levels from 5V used by Arduino to 3.3V required by the transceiver. Two two-color LEDs are used for indication. The left one blinks red if a GGA message was rejected and green if it was sent to the radio. The right one does the same form RMC messages.
 
 All the setup is very similar to [David Fanin's GPS project](https://github.com/dfannin/arduino-vx8r-gps). Main difference is that his project implements bi-directional communications using a software serial port emulation for the second port.
 
@@ -58,7 +62,20 @@ The GY-GPS6MV2 GPS recevier and the Arduino Nano clone were both purchases on Al
 
 ## How my prototype looks like
 
+![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_prototype_1.jpg)
+
+![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_prototype_2.jpg)
+
+![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_prototype_3.jpg)
+
 ## Field test
+
+The prototype was tested in a train.  [Click here](http://www.youtube.com/watch?v=POHEborbWdw) to see the video.
+
+![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_test_0.jpg)
+
+![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_test_1.jpg)
+
 
 ## Plans for the future
 
@@ -66,8 +83,9 @@ The GY-GPS6MV2 GPS recevier and the Arduino Nano clone were both purchases on Al
 1. [Reverse Engineering the Yaesu VX-8DR GPS Interface](http://lingnik.com/2013/02/09/reverse-engineering-yaesu-vx-8dr-gps-interface.html)
 2. [FGPS2 data samples (VX-8R Yahoo Group](https://groups.yahoo.com/neo/groups/VX_8R/conversations/topics/7719)
 3. [David Fannin's Yaesu VX-8R Handheld Transmitter-compatible GPS](https://github.com/dfannin/arduino-vx8r-gps)
-3. [GPS - NMEA sentence information](http://aprs.gids.nl/nmea/)
-4. [MTK NMEA checksum calculator](http://www.hhhh.org/wiml/proj/nmeaxor.html)
+4. [NMEA to Yaesu VX-8](http://alloutput.com/amateur-radio/nmea-to-yaesu-vx-8/)
+5. [GPS - NMEA sentence information](http://aprs.gids.nl/nmea/)
+6. [MTK NMEA checksum calculator](http://www.hhhh.org/wiml/proj/nmeaxor.html)
 
 ## Questions? Suggestions?
 You are more than welcome to contact me with any questions, suggestions or propositions regarding this project. You can:
