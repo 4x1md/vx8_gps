@@ -16,6 +16,7 @@ Sending a sentence with empty fields will result in gibberish on the GPS screen 
 $GPGGA,074222.000,,,,,0,00,99.9,,,,,,0000*6E
 ```
 ![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_0.jpg)
+
 Allthough the sentence accords with the standard, the transceiver isn't able to process it correctly.
 
 Actually setting number of sybols in each field is what all this project is about! If the second issue didn't exist we could connect the ublox NEO-6M chip based module directly to the transceiver.
@@ -30,7 +31,8 @@ The time in the first field is invalid, the latitude and longitude fields have l
 ![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_1a.jpg)
 
 ![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_1b.jpg)
-Have you ever wanted to write text messages on the display of your VX-8? Or maybe thought about setting the time to 89:91:75? Now you know how to do both!
+
+Have you ever thought about writing some text on the display of your VX-8? Or maybe about setting the time to 89:91:75? Now you know how to do it!
 
 Let's try one more example where there will be no numbers in latitude and longitude fields.
 ```
