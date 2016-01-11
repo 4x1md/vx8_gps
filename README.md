@@ -42,6 +42,10 @@ And the output is:
 
 ![BlockDiagram](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/vx8_2.jpg)
 
+Note that last two fields of our so called NMEA sentence mean that there was a valid GPS fix and that it was acquired from 4 satellites. This is exactly what we see on the display: satellites icon with number 4 under it.  This is enough for the transceiver to enable APRS beacon transmission if you press the internet (TX PO) key these coordinates will be transmitted. Obviously, APRS site will mark such packet as invalid.
+
+When I told you that there is no data validation I really meant no validation at all!
+
 If you want to try it your self you'll need a standard programming cable (original or one from AliExpress) and a terminal program. I used [PuTTY](http://www.putty.org/). Open a new session, choose the correct serial port, set it to 9600 8N1 and you are ready to go. Rigth mouse click in the terminal window pastes the message from the clipboard. After pasting the message press CTRL+M and then CTRL+J. It will produce the CR and LF (ASCII 13 and 10) symbols which mark end of NMEA sentence.
 
 ## Hardware
