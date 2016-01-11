@@ -91,7 +91,7 @@ The prototype was tested in a train.  [Click here](http://www.youtube.com/watch?
 
 ## Useful links
 1. [Reverse Engineering the Yaesu VX-8DR GPS Interface](http://lingnik.com/2013/02/09/reverse-engineering-yaesu-vx-8dr-gps-interface.html)
-2. [FGPS2 data samples (VX-8R Yahoo Group](https://groups.yahoo.com/neo/groups/VX_8R/conversations/topics/7719)
+2. [FGPS2 data samples (VX-8R Yahoo Group)](https://groups.yahoo.com/neo/groups/VX_8R/conversations/topics/7719)
 3. [David Fannin's Yaesu VX-8R Handheld Transmitter-compatible GPS](https://github.com/dfannin/arduino-vx8r-gps)
 4. [NMEA to Yaesu VX-8](http://alloutput.com/amateur-radio/nmea-to-yaesu-vx-8/)
 5. [GPS - NMEA sentence information](http://aprs.gids.nl/nmea/)
