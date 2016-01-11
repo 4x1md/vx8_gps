@@ -50,7 +50,7 @@ Note that last two fields of our so called NMEA sentence mean that there was a v
 
 When I told you that there is no data validation I really meant no validation at all! You don't even have to add checksum as it will be completely ignored by the radio.
 
-If you want to try it your self you'll need a standard programming cable (original or one from AliExpress) and a terminal program. I used [PuTTY](http://www.putty.org/). Open a new session, choose the correct serial port, set it to 9600 8N1 and you are ready to go. Rigth mouse click in the terminal window pastes the message from the clipboard. After pasting the message press CTRL+M and then CTRL+J. It will produce the CR and LF (ASCII 13 and 10) symbols which mark end of NMEA sentence.
+If you want to try it your self you'll need a standard programming cable (original or one from AliExpress) and a terminal program. I used [PuTTY](http://www.putty.org/). Open a new session, choose the correct serial port, set it to 9600 8N1 and you are ready to go. Right mouse click in the terminal window pastes the message from the clipboard. After pasting your message press CTRL+M and then CTRL+J. It will send the CR and LF (ASCII 13 and 10) symbols which mark the end of NMEA sentence.
 
 ## Hardware
 
