@@ -62,9 +62,9 @@ Important! The serial port on the Arduino board is also used for programming the
 
 On the contrary, using USB serial when the transceiver is connected not only is possible but also is recommended for debugging purposes. You can use any terminal program to monitor Arduino's output even when the radio is connected.
 
-Voltage divider formed by 240 Ohm and 470 Ohm resistors converts the logic levels from 5V used by Arduino to 3.3V required by the transceiver. Two two-color LEDs are used for indication. The left one blinks red if a GGA message was rejected and green if it was sent to the radio. The right one does the same form RMC messages.
+Voltage divider formed by 240 Ohm and 470 Ohm resistors converts the logic levels from 5V used by Arduino to 3.3V required by the transceiver. Two two-color LEDs are used for indication. The left one blinks red if a GGA message was rejected and green if it was sent to the radio. The right one does the same for RMC messages.
 
-All the setup is very similar to [David Fanin's GPS project](https://github.com/dfannin/arduino-vx8r-gps). Main difference is that his project implements bi-directional communications using a software serial port emulation for the second port.
+All the setup is very similar to [David Fanin's GPS project](https://github.com/dfannin/arduino-vx8r-gps). Main difference is that his project implements bi-directional communication using software serial port emulation for the second port.
 
 The GY-GPS6MV2 GPS recevier and the Arduino Nano clone were both purchases on AliExpress for less than $15.
 
