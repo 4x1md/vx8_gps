@@ -26,7 +26,7 @@ Allthough the sentence accords with the standard, the transceiver isn't able to 
 Actually setting number of sybols in each field is what all this project is about! If the second issue didn't exist we could connect the ublox NEO-6M chip based module directly to the transceiver.
 
 ### NMEA data validation
-Here the things get even more interesting. The Yaesu VX-8 does no validation on the NMEA data. When I say no validation, I mean **no validation at all**! Let's look at the following NMEA sentence.
+Here the things get even more interesting. Yaesu VX-8 does no validation on the NMEA data. When I say no validation, I mean **no validation at all**! Let's look at the following NMEA sentence.
 ```
 $GPGGA,999999.000,73DE.0000,!,Z7DTF.NOPQ,4,1,04
 ```
