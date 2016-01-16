@@ -11,9 +11,9 @@ I started from writing a Python program which was sending NMEA sentences to the 
 
 ![APRS flower](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/VX8_GPS/Docs/Images/aprs_flower.png)
 
-Later, [David Fanin's project](https://github.com/dfannin/arduino-vx8r-gps) inspired me to build my own GPS module. Thanks to his project I found out the ublox NEO-6M chip and a simple search on AliExpress showed that a ready module can be puchased for $10-20.
+Later, [David Fannin's project](https://github.com/dfannin/arduino-vx8r-gps) inspired me to build my own GPS module. Thanks to his project I found out the ublox NEO-6M chip and a simple search on AliExpress showed that a ready module can be puchased for $10-20.
 
-I wrote my own software which isn't based on David Fanin's code. I started it as Arduino project but after finding out that the standard Arduino Serial library doesn't support interrupt driven writing and reading I decided to write it in pure C. After small changes the C code can be compiled in Arduino environment. The Arduino code is located in [vx8_gps_arduino folder](https://github.com/4z7dtf/vx8_gps/blob/master/VX8_GPS/vx8_gps_arduino) of this repository.
+I wrote my own software which isn't based on David Fannin's code. I started it as Arduino project but after finding out that the standard Arduino Serial library doesn't support interrupt driven writing and reading I decided to write it in pure C. After small changes the C code can be compiled in Arduino environment. The Arduino code is located in [vx8_gps_arduino folder](https://github.com/4z7dtf/vx8_gps/blob/master/VX8_GPS/vx8_gps_arduino) of this repository.
 
 I tried to document this project as much as possible and I hope it will be interesting and useful for other radio amateurs.
 
@@ -78,7 +78,7 @@ On the contrary, using USB serial when the transceiver is connected not only is 
 
 Voltage divider formed by 240 Ohm and 470 Ohm resistors converts the logic levels from 5V used by Arduino to 3.3V required by the transceiver. Two two-color LEDs are used for indication. The left one blinks red if a GGA message was rejected and green if it was sent to the radio. The right one does the same for RMC messages.
 
-All the setup is very similar to [David Fanin's GPS project](https://github.com/dfannin/arduino-vx8r-gps). Main difference is that his project implements bi-directional communication using software serial port emulation for the second port.
+All the setup is very similar to [David Fannin's GPS project](https://github.com/dfannin/arduino-vx8r-gps). Main difference is that his project implements bi-directional communication using software serial port emulation for the second port.
 
 The GY-GPS6MV2 GPS recevier and the Arduino Nano clone were both purchases on AliExpress for less than $15.
 
