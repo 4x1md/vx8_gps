@@ -1,7 +1,7 @@
 /*
- * vx8_gps.c
+ * vx8_gps.ino
  *
- *  Created on: 03 gen 2016
+ *  Created on: 16 Jan 2016
  *      Author: 4Z7DTF
  */
 
