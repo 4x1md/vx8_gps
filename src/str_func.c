@@ -5,8 +5,9 @@
  *  Author: Dmitry Melnichansky / 4Z7DTF
  */
 
+#include "../src/str_func.h"
+
 #include <stdlib.h>
-#include "str_func.h"
 
 /*
  * Function: str_len

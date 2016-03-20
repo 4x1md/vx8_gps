@@ -35,7 +35,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#include "str_func.h"
+#include "../src/str_func.h"
 
 #define bool uint8_t
 #define true 0x01
