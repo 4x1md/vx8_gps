@@ -13,7 +13,7 @@ I started from writing a Python program which was sending NMEA sentences to the 
 
 Later, [David Fannin's project](https://github.com/dfannin/arduino-vx8r-gps) inspired me to build my own GPS module. Thanks to his project I found out the ublox NEO-6M chip and a simple search on AliExpress showed that a ready module can be puchased for $10-20.
 
-I wrote my own software which isn't based on David Fannin's code. I started it as Arduino project but after finding out that the standard Arduino Serial library doesn't support interrupt driven writing and reading I decided to write it in pure C. After small changes the C code can be compiled in Arduino environment. The Arduino code is located in [vx8_gps_arduino folder](https://github.com/4z7dtf/vx8_gps/blob/master/VX8_GPS/vx8_gps_arduino) of this repository.
+I wrote my own software which isn't based on David Fannin's code. I started it as Arduino project but after finding out that the standard Arduino Serial library doesn't support interrupt driven writing and reading I decided to write it in pure C. After small changes the C code can be compiled in Arduino environment. The Arduino code is located in [/arduino/vx8_gps_16mhz folder](https://github.com/4z7dtf/vx8_gps/blob/master/arduino/vx8_gps_16mhz/vx8_gps_16mhz.ino) of this repository.
 
 I tried to document this project as much as possible and I hope it will be interesting and useful for other radio amateurs.
 
