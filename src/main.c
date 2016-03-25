@@ -51,6 +51,13 @@ void usart0_init(void);
 #define USART_BAUDRATE 9600
 #define UBRR_VALUE (((F_CPU / (USART_BAUDRATE * 16UL))) - 1)
 
+/* Led output pin deifinitions. */
+#define ALL_OFF 0B00000000
+#define GGA_GREEN 0B10000000
+#define GGA_RED 0B00100000
+#define RMC_GREEN 0B00010000
+#define RMC_RED 0B00000100
+
 /* Different sources state that maximum sentence length is 80 characters
  * plus CR and LF. Actual Yaesu FGPS-2 GPS output shows that this standard
  * is ignored and GGA message reaches 86 symbols. That's why the buffer sizes
@@ -303,7 +310,7 @@ int main(void)
 				tx_not_empty = true;
 				reset_rx();
 			}
-			PORTD = PORTD &= 0B00000000; /* Turn all the leds off. */
+			PORTD = PORTD &= ALL_OFF; /* Turn all the leds off. */
 			break;
 		}
 		/* End RX routine */
@@ -358,7 +365,7 @@ bool process_field(void)
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
 			{
-				PORTD = PORTD |= 0B00100000; /* Turn the red LED on. */
+				PORTD = PORTD |= GGA_RED; /* Turn the red LED on. */
 				res = false;
 				break;
 			}
@@ -370,9 +377,9 @@ bool process_field(void)
 		else if (rx_field == 0x02)
 		{
 			if (rx_field_size == 0)
-				PORTD = PORTD |= 0B10100000; /* Red LED on. */
+				PORTD = PORTD |= GGA_RED; /* Red LED on. */
 			else
-				PORTD = PORTD |= 0B10000000; /* Green LED on. */
+				PORTD = PORTD |= GGA_GREEN; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
 			rx_buf_pos -= rx_field_size;
@@ -479,7 +486,7 @@ bool process_field(void)
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
 			{
-				PORTD = PORTD |= 0B00000100; /* Turn the red LED on. */
+				PORTD = PORTD |= RMC_RED; /* Turn the red LED on. */
 				res = false;
 				break;
 			}
@@ -491,9 +498,9 @@ bool process_field(void)
 		else if (rx_field == 0x03)
 		{
 			if (rx_field_size == 0)
-				PORTD = PORTD |= 0B00000100; /* Red LED on. */
+				PORTD = PORTD |= RMC_RED; /* Red LED on. */
 			else
-				PORTD = PORTD |= 0B00010000; /* Green LED on. */
+				PORTD = PORTD |= RMC_GREEN; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
 			rx_buf_pos -= rx_field_size;
