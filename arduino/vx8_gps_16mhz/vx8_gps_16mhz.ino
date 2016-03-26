@@ -5,9 +5,37 @@
  *      Author: 4Z7DTF
  *  Repository: https://github.com/4z7dtf/vx8_gps
  *  Decription: Arduino code of GPS module for Yaesu VX-8DR/DE transceivers.
- *              Verified with Arduino Nano 16MHz/5V on 20 March 2016.
+ *              Verified with Arduino Nano 16MHz/5V on 26 March 2016.
  */
 
+/*
+ No fix:
+ $GPGGA,125004.000,,,,,0,00,99.9,,,,,,0000*6D
+ $GPRMC,125005.000,V,,,,,,,261215,,,N*4D
+ $GPZDA,125004.000,26,12,2015,,*55
+
+ Fix:
+ $GPGGA,142615.000,3226.0501,N,03454.8587,E,1,04,8.0,115.5,M,18.2,M,,0000*5B
+ $GPRMC,142616.000,A,3226.0485,N,03454.8693,E,6.09,48.89,261215,,,A*57
+ $GPZDA,142615.000,26,12,2015,,*52
+
+ NEO-6M vs. Yaesu VX-8
+ NEO: $GPGGA,094053.00,3204.41475,N,03445.96499,E,1,09,1.12,28.7,M,17.5,M,,*69
+ VX8: $GPGGA,095142.196,4957.5953,N,00811.9616,E,0,00,99.9,00234.7,M,0047.9,M,000.0,0000*42
+ VX8: $GPGGA,095142.196,4957.5953 ,N,00811.9616 ,E,0,00,99.9 ,00234.7,M,0047.9,M,000.0,0000*42
+ Dif: $GPGGA,094053.00_,3204.4147X,N,03445.9649X,E,1,09,_1.1X,___28.7,M,__17.5,M,___._,____*69
+
+ NEO: $GPRMC,094054.00,A,3204.41446,N,03445.96604,E,3.876,110.45,231215,,,A*62
+ VX8: $GPRMC,095142.196,V,4957.5953,N,00811.9616,E,9999.99,999.99,080810,,*2C
+ VX8: $GPRMC,095142.196,V,4957.5953 ,N,00811.9616 ,E,9999.99 ,999.99,080810,,  *2C
+ Dif: $GPRMC,094054.00_,A,3204.4144X,N,03445.9660X,E,___3.87X,110.45,231215,,XX*62
+
+ NEO: $GPZDA,142615.00,26,12,2015,,*52
+ VX8: $GPZDA,095143.196,08,08,2010,,*51
+ Dif: $GPZDA,142615.00_,26,12,2015,,*52
+
+ */
+ 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
@@ -24,6 +52,13 @@ void usart0_init(void);
 
 #define USART_BAUDRATE 9600
 #define UBRR_VALUE (((F_CPU / (USART_BAUDRATE * 16UL))) - 1)
+
+/* Led output pin deifinitions. */
+#define ALL_OFF 0B00000000
+#define GGA_GREEN 0B10000000
+#define GGA_RED 0B00100000
+#define RMC_GREEN 0B00010000
+#define RMC_RED 0B00000100
 
 /* Different sources state that maximum sentence length is 80 characters
  * plus CR and LF. Actual Yaesu FGPS-2 GPS output shows that this standard
@@ -68,8 +103,10 @@ uint8_t tx_buf_pos;
 bool tx_not_empty; /* TX has a message to send. Set to false when tx_buffer is empty. */
 bool tx_rts; /* TX ready to send. Set to true when RX is ready to send next byte. */
 
-void setup()
+int main(void)
 {
+  /* Setup */
+
   /* PORTD connections:
    * pin 7: green led
    * pin 5: red led
@@ -86,10 +123,10 @@ void setup()
   state = READY;
 
   sei();
-}
 
-void loop()
-{
+  /* Main loop */
+  while (1)
+  {
     /* Next byte is sent if there is one and TX is ready to send.
      * If null terminator or end of buffer is reached, TX is reset.
      */
@@ -275,11 +312,14 @@ void loop()
         tx_not_empty = true;
         reset_rx();
       }
-      PORTD = PORTD &= 0B00000000; /* Turn all the leds off. */
+      PORTD = PORTD &= ALL_OFF; /* Turn all the leds off. */
       break;
     }
     /* End RX routine */
   }
+
+  return (0);
+}
 
 /*
  * Function: process_field
@@ -327,7 +367,7 @@ bool process_field(void)
       /* If time field is empty all the message is discarded. */
       if (rx_field_size == 0)
       {
-        PORTD = PORTD |= 0B00100000; /* Turn the red LED on. */
+        PORTD = PORTD |= GGA_RED; /* Turn the red LED on. */
         res = false;
         break;
       }
@@ -339,9 +379,9 @@ bool process_field(void)
     else if (rx_field == 0x02)
     {
       if (rx_field_size == 0)
-        PORTD = PORTD |= 0B10100000; /* Red LED on. */
+        PORTD = PORTD |= GGA_RED; /* Red LED on. */
       else
-        PORTD = PORTD |= 0B10000000; /* Green LED on. */
+        PORTD = PORTD |= GGA_GREEN; /* Green LED on. */
       /* Latitude field is fixed to 9 characters: ddmm.ssss */
       fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
       rx_buf_pos -= rx_field_size;
@@ -448,7 +488,7 @@ bool process_field(void)
       /* If time field is empty all the message is discarded. */
       if (rx_field_size == 0)
       {
-        PORTD = PORTD |= 0B00000100; /* Turn the red LED on. */
+        PORTD = PORTD |= RMC_RED; /* Turn the red LED on. */
         res = false;
         break;
       }
@@ -460,9 +500,9 @@ bool process_field(void)
     else if (rx_field == 0x03)
     {
       if (rx_field_size == 0)
-        PORTD = PORTD |= 0B00000100; /* Red LED on. */
+        PORTD = PORTD |= RMC_RED; /* Red LED on. */
       else
-        PORTD = PORTD |= 0B00010000; /* Green LED on. */
+        PORTD = PORTD |= RMC_GREEN; /* Green LED on. */
       /* Latitude field is fixed to 9 characters: ddmm.ssss */
       fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
       rx_buf_pos -= rx_field_size;
