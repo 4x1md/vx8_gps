@@ -86,13 +86,21 @@ The GY-GPS6MV2 GPS recevier and the Arduino Nano clone were both purchases on Al
 
 To be completed...
 
-## My prototype
+## Prototypes
+
+### Arduino Nano
 
 ![Prototype](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_prototype_1.jpg)
 
 ![Prototype](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_prototype_2.jpg)
 
 ![Prototype](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_prototype_3.jpg)
+
+### Standalone Microcontroller v1.0
+
+The prototype v1.0 is built on a dedicated PCB with a standalone ATmega328P-20PU microcontroller in 28 pin DIP package.
+
+Refer to [prototype_v1.0.md](https://github.com/4z7dtf/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
 
 ## Field tests
 
