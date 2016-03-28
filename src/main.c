@@ -32,9 +32,9 @@
  Dif: $GPZDA,142615.00_,26,12,2015,,*52
 
  */
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
-
 #include "../src/str_func.h"
 
 #define bool uint8_t
@@ -46,17 +46,23 @@ bool process_field(void);
 void reset_rx(void);
 void reset_tx(void);
 void copy_msg_to_tx_buf(void);
-void usart0_init(void);
+void usart_init(void);
 
 #define USART_BAUDRATE 9600
 #define UBRR_VALUE (((F_CPU / (USART_BAUDRATE * 16UL))) - 1)
 
-/* Led output pin deifinitions. */
-#define ALL_OFF 0B00000000
+/* Led output pin deifinitions.
+ * All the leds are connectd to PORTD as follows:
+ * pin 7: green - GGA sentence valid
+ * pin 5: red - GGA sentence invalid
+ * pin 4: green - RMC sentence valid
+ * pin 2: red - RMC sentence invalid
+ */
 #define GGA_GREEN 0B10000000
 #define GGA_RED 0B00100000
 #define RMC_GREEN 0B00010000
 #define RMC_RED 0B00000100
+#define ALL_OFF 0B00000011
 
 /* Different sources state that maximum sentence length is 80 characters
  * plus CR and LF. Actual Yaesu FGPS-2 GPS output shows that this standard
@@ -64,8 +70,12 @@ void usart0_init(void);
  * are limited to 90 characters instead of 82.
  */
 #define BUFFER_SIZE 90
+#define COMMA ','
+#define DOLLAR '$'
+#define ASTERISK '*'
 #define CR 0x0D
 #define LF 0x0A
+#define NO_DATA 0x00 /* Marks no data received by RX. */
 
 /* RX variables */
 enum rx_states
@@ -104,22 +114,13 @@ bool tx_rts; /* TX ready to send. Set to true when RX is ready to send next byte
 int main(void)
 {
 	/* Setup */
-
-	/* PORTD connections:
-	 * pin 7: green led
-	 * pin 5: red led
-	 * pin 4: green led
-	 * pin 2: red led
-	 */
 	DDRD = DDRD | 0B11111100;
-	PORTD = PORTD & 0B00000011;
-
-	usart0_init();
+	PORTD &= ALL_OFF;
+	usart_init();
 	reset_tx();
 	tx_rts = true;
 	reset_rx();
 	state = READY;
-
 	sei();
 
 	/* Main loop */
@@ -130,7 +131,7 @@ int main(void)
 		 */
 		if (tx_rts && tx_not_empty)
 		{
-			if (tx_buf_pos < BUFFER_SIZE && tx_buffer[tx_buf_pos] != 0x00)
+			if (tx_buf_pos < BUFFER_SIZE && tx_buffer[tx_buf_pos] != NO_DATA)
 			{
 				UDR0 = tx_buffer[tx_buf_pos];
 				tx_buf_pos++;
@@ -152,7 +153,7 @@ int main(void)
 			if (rx_byte_ready)
 			{
 				rx_byte_ready = false;
-				if (rx_byte == '$')
+				if (rx_byte == DOLLAR)
 				{
 					rx_buffer[rx_buf_pos] = rx_byte;
 					rx_buf_pos++;
@@ -182,7 +183,7 @@ int main(void)
 				/* If received character is $ or the buffer is overflown,
 				 * reset and return to READY state.
 				 */
-				if (rx_byte == '$' || rx_buf_pos >= BUFFER_SIZE)
+				if (rx_byte == DOLLAR || rx_buf_pos >= BUFFER_SIZE)
 				{
 					reset_rx();
 					break;
@@ -191,7 +192,7 @@ int main(void)
 				/* Comma and marks end of field, asterisk marks end of message
 				 * which is also end of the last field.
 				 */
-				if (rx_byte == ',' || rx_byte == '*')
+				if (rx_byte == COMMA || rx_byte == ASTERISK)
 				{
 					bool field_valid = process_field();
 					if (!field_valid)
@@ -213,7 +214,7 @@ int main(void)
 				/* If end of message, change state to RX_CHECKSUM
 				 * without affecting the calculated checksum.
 				 */
-				if (rx_byte == '*')
+				if (rx_byte == ASTERISK)
 				{
 					state = RX_CHECKSUM;
 				}
@@ -238,7 +239,8 @@ int main(void)
 				/* If received character is $ or * or the buffer is overflown,
 				 * reset and return to READY state.
 				 */
-				if (rx_byte == '$'|| rx_byte == '*' || rx_buf_pos >= BUFFER_SIZE)
+				if (rx_byte == DOLLAR || rx_byte == ASTERISK
+						|| rx_buf_pos >= BUFFER_SIZE)
 				{
 					reset_rx();
 					break;
@@ -254,7 +256,8 @@ int main(void)
 						{
 							checksum ^= rx_buffer[i];
 						}
-						rx_buffer[rx_buf_pos] = hex_chars[(checksum & 0xF0) >> 4];
+						rx_buffer[rx_buf_pos] =
+								hex_chars[(checksum & 0xF0) >> 4];
 						rx_buf_pos++;
 						rx_buffer[rx_buf_pos] = hex_chars[checksum & 0x0F];
 						rx_buf_pos++;
@@ -301,7 +304,6 @@ int main(void)
 			 * the message to TX system moves to READY state.
 			 */
 
-
 			/* The new message is sent to TX only if it has no message to send. */
 			if (!tx_not_empty)
 			{
@@ -310,7 +312,7 @@ int main(void)
 				tx_not_empty = true;
 				reset_rx();
 			}
-			PORTD = PORTD &= ALL_OFF; /* Turn all the leds off. */
+			PORTD &= ALL_OFF; /* Turn all the leds off. */
 			break;
 		}
 		/* End RX routine */
@@ -360,12 +362,13 @@ bool process_field(void)
 		 * Dif:    $GPGGA,094053.00_,3204.4147X,N,03445.9649X,E,1,09,_1.1X,___28.7,M,__17.5,M,___._,____*69
 		 * Fields:      0          1          2 3           4 5 6  7     8       9 A      B C     D    E
 		 */
-		if (rx_field == 0x01)
+		switch (rx_field)
 		{
+		case 0x01:
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
 			{
-				PORTD = PORTD |= GGA_RED; /* Turn the red LED on. */
+				PORTD |= GGA_RED; /* Turn the red LED on. */
 				res = false;
 				break;
 			}
@@ -373,106 +376,99 @@ bool process_field(void)
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 6, 3);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 10;
-		}
-		else if (rx_field == 0x02)
-		{
+			break;
+		case 0x02:
 			if (rx_field_size == 0)
-				PORTD = PORTD |= GGA_RED; /* Red LED on. */
+				PORTD |= GGA_RED; /* Red LED on. */
 			else
-				PORTD = PORTD |= GGA_GREEN; /* Green LED on. */
+				PORTD |= GGA_GREEN; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 9;
-		}
-		else if (rx_field == 0x03)
-		{
+			break;
+		case 0x03:
 			/* Latitude N/S field is set to N if empty. */
 			if (rx_field_size == 0)
 			{
 				rx_buffer[rx_buf_pos] = 'N';
 				rx_buf_pos++;
 			}
-		}
-		else if (rx_field == 0x04)
-		{
+			break;
+		case 0x04:
 			/* Longitude field is fixed to 10 characters: dddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 5, 4);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 10;
-		}
-		else if (rx_field == 0x05)
-		{
+			break;
+		case 0x05:
 			/* Longitude E/W field is set to E if empty. */
 			if (rx_field_size == 0)
 			{
 				rx_buffer[rx_buf_pos] = 'E';
 				rx_buf_pos++;
 			}
-		}
-		else if (rx_field == 0x07)
-		{
+			break;
+		case 0x06:
+			/* Field 6 doesn't require modification. */
+			break;
+		case 0x07:
 			/* Number of satellites is integer fixed to 2 characters. */
 			fix_int_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 2);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 2;
-		}
-		else if (rx_field == 0x08)
-		{
+			break;
+		case 0x08:
 			/* Horizontal dilution of position field is fixed to 4 characters: xx.x.
 			 * In the case of NEO-U-6 it means that one character after the decimal point
 			 * will be truncated. */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 2, 1);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 4;
-		}
-		else if (rx_field == 0x09)
-		{
+			break;
+		case 0x09:
 			/* Altitude above mean sea is fixed to 7 characters: aaaaa.a */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 5, 1);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 7;
-		}
-		else if (rx_field == 0x0A)
-		{
+			break;
+		case 0x0A:
 			/* Altitude units are set to M (meters) if this field is empty. */
 			if (rx_field_size == 0)
 			{
 				rx_buffer[rx_buf_pos] = 'M';
 				rx_buf_pos++;
 			}
-		}
-		else if (rx_field == 0x0B)
-		{
+			break;
+		case 0x0B:
 			/* Height of geoid field is fixed to 6 characters: ddd.mm */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 1);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 6;
-		}
-		else if (rx_field == 0x0C)
-		{
+			break;
+		case 0x0C:
 			/* Altitude units are set to M (meters) if this field is empty. */
 			if (rx_field_size == 0)
 			{
 				rx_buffer[rx_buf_pos] = 'M';
 				rx_buf_pos++;
 			}
-		}
-		else if (rx_field == 0x0D)
-		{
+			break;
+		case 0x0D:
 			/* Time since last DGPS update field is fixed to 5 characters: ddd.m */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 3, 1);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 5;
-		}
-		else if (rx_field == 0x0E)
-		{
+			break;
+		case 0x0E:
 			/* DGPS station ID number is integer fixed to 4 characters. */
 			fix_int_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 4;
+			break;
 		}
 		break;
+		/* End case GGA */
 
 	case RMC:
 		/* NEO-6M vs. Yaesu VX-8
@@ -481,12 +477,15 @@ bool process_field(void)
 		 * Dif:    $GPRMC,094054.00_,A,3204.4144X,N,03445.9660X,E,___3.87X,110.45,231215,,XX*62
 		 * Fields:      0          1 2          3 4           5 6        7      8      9
 		 */
-		if (rx_field == 0x01)
+		switch (rx_field)
 		{
+		case 0x00:
+			break;
+		case 0x01:
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
 			{
-				PORTD = PORTD |= RMC_RED; /* Turn the red LED on. */
+				PORTD |= RMC_RED; /* Turn the red LED on. */
 				res = false;
 				break;
 			}
@@ -494,58 +493,56 @@ bool process_field(void)
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 6, 3);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 10;
-		}
-		else if (rx_field == 0x03)
-		{
+			break;
+		case 0x02:
+			break;
+		case 0x03:
 			if (rx_field_size == 0)
-				PORTD = PORTD |= RMC_RED; /* Red LED on. */
+				PORTD |= RMC_RED; /* Red LED on. */
 			else
-				PORTD = PORTD |= RMC_GREEN; /* Green LED on. */
+				PORTD |= RMC_GREEN; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 9;
-		}
-		else if (rx_field == 0x04)
-		{
+			break;
+		case 0x04:
 			/* Latitude N/S field is set to N if empty. */
 			if (rx_field_size == 0)
 			{
 				rx_buffer[rx_buf_pos] = 'N';
 				rx_buf_pos++;
 			}
-		}
-		else if (rx_field == 0x05)
-		{
+			break;
+		case 0x05:
 			/* Longitude field is fixed to 10 characters: dddmm.ssss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 5, 4);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 10;
-		}
-		else if (rx_field == 0x06)
-		{
+			break;
+		case 0x06:
 			/* Longitude E/W field is set to E if empty. */
 			if (rx_field_size == 0)
 			{
 				rx_buffer[rx_buf_pos] = 'E';
 				rx_buf_pos++;
 			}
-		}
-		else if (rx_field == 0x07)
-		{
+			break;
+		case 0x07:
 			/* Speed field is fixed to 7 characters: ssss.ss */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 2);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 7;
-		}
-		else if (rx_field == 0x08)
-		{
+			break;
+		case 0x08:
 			/* Track angle field is fixed to 6 characters: ddd.mm */
 			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 3, 2);
 			rx_buf_pos -= rx_field_size;
 			rx_buf_pos += 6;
+			break;
 		}
 		break;
+		/* End case RMC */
 
 	case ZDA:
 		/* NEO-6M vs. Yaesu VX-8
@@ -583,7 +580,7 @@ void reset_tx(void)
 {
 	for (uint8_t i = 0; i < BUFFER_SIZE; i++)
 	{
-		tx_buffer[i] = 0x00;
+		tx_buffer[i] = NO_DATA;
 	}
 	tx_buf_pos = 0;
 	tx_not_empty = false;
@@ -600,7 +597,7 @@ void reset_rx(void)
 {
 	for (uint8_t i = 0; i < BUFFER_SIZE; i++)
 	{
-		rx_buffer[i] = 0x00;
+		rx_buffer[i] = NO_DATA;
 	}
 	rx_buf_pos = 0;
 	calc_checksum = 0x00;
@@ -627,28 +624,34 @@ void copy_msg_to_tx_buf(void)
 }
 
 /* UART routines */
-/* UART initialization */
-void usart0_init(void)
+/*
+ * Function: usart_init
+ * --------------------
+ *   Initializes UART, enables TX, RX and interrupts.
+ *
+ *   returns:	none
+ */
+void usart_init(void)
 {
-	// Set baud rate
-	//UBRR0 = UBRR_VALUE;
+	/* Set baud rate */
 	UBRR0H = (uint8_t) (UBRR_VALUE >> 8);
 	UBRR0L = (uint8_t) UBRR_VALUE;
-	// Set frame format to 8 data bits, no parity, 1 stop bit
+	/* Set frame format to 8 data bits, no parity, 1 stop bit */
 	UCSR0C |= (1 << UCSZ01) | (1 << UCSZ00);
-	//enable reception and RC complete interrupt
+	/* Enable reception and RC complete interrupt */
 	UCSR0B |= (1 << RXEN0) | (1 << RXCIE0);
-	//enable transmission and UDR0 empty interrupt
+	/* Enable transmission and UDR0 empty interrupt */
 	UCSR0B |= (1 << TXEN0) | (1 << UDRIE0);
 }
 
-//RX Complete interrupt service routine
+/* RX Complete interrupt service routine */
 ISR(USART_RX_vect)
 {
 	rx_byte = UDR0;
 	rx_byte_ready = true;
 }
 
+/* UART Data register empty service routine */
 ISR(USART_UDRE_vect)
 {
 	tx_rts = true;

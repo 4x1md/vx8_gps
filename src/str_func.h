@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-uint8_t str_len(char[]);
+uint8_t str_len(const char[]);
 uint8_t int_len(char[]);
 uint8_t frac_len(char[]);
 

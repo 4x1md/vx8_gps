@@ -6,7 +6,6 @@
  */
 
 #include "../src/str_func.h"
-
 #include <stdlib.h>
 
 /*
@@ -18,16 +17,11 @@
  *
  *   returns:	the number of symbols before the \0 character.
  */
-uint8_t str_len(char str[])
+uint8_t str_len(const char *str)
 {
-	uint8_t n = 0;
-	char c = str[n];
-	while (c != '\0')
-	{
-		n++;
-		c = str[n];
-	}
-	return n;
+	const char *s;
+	for (s = str; *s; ++s);
+	return (s - str);
 }
 
 /*
