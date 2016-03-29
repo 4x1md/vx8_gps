@@ -129,7 +129,7 @@ Optional/questionable features:
 2. microSD card slot and keeping logs of the tracks.
 3. LCD display for displaying current GPS data.
 
-## Useful links
+## Links
 1. [Reverse Engineering the Yaesu VX-8DR GPS Interface](http://lingnik.com/2013/02/09/reverse-engineering-yaesu-vx-8dr-gps-interface.html)
 2. [FGPS2 data samples (VX-8R Yahoo Group)](https://groups.yahoo.com/neo/groups/VX_8R/conversations/topics/7719)
 3. [David Fannin's Yaesu VX-8R Handheld Transmitter-compatible GPS](https://github.com/dfannin/arduino-vx8r-gps)
@@ -137,6 +137,7 @@ Optional/questionable features:
 5. [VX-8DR and GPS by VK3YY](https://vk3yy.wordpress.com/2015/07/24/vx-8dr-and-gps/)
 6. [GPS - NMEA sentence information](http://aprs.gids.nl/nmea/)
 7. [MTK NMEA checksum calculator](http://www.hhhh.org/wiml/proj/nmeaxor.html)
+8. [avr-libc 2.0.0: <avr/interrupt.h>: Interrupts](http://www.nongnu.org/avr-libc/user-manual/group__avr__interrupts.html)
 
 ## Questions? Suggestions?
 You are more than welcome to contact me with any questions, suggestions or propositions regarding this project. You can:
