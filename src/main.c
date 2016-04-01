@@ -1,8 +1,17 @@
 /*
  * vx8_gps.c
  *
- *  Created on: 03 gen 2016
- *      Author: 4Z7DTF
+ *  Created on: 03 Jan 2016
+ *      Author: Dmitry Melnichansky 4Z7DTF
+ *  Repository: https://github.com/4z7dtf/vx8_gps
+ *
+ *  2016-01-03 The program created.
+ *  2016-03-28 Stable version which uses TX Complete interrupt. Tested with
+ *             Arduino Nano running at 16MHz and with a stand-alone ATmega328P
+ *             running at 2MHz.
+ *  2016-04-01 USART Buffer Empty interrupt used for TX. TX routines removed
+ *             completely from the main loop. Tested with Arduino Nano at 16MHz
+ *             and with a stand-alone ATmega328P running at 2MHz.
  */
 
 /*
@@ -52,12 +61,12 @@ void usart_init(void);
 #define UBRR_VALUE (((F_CPU / (USART_BAUDRATE * 16UL))) - 1)
 
 /* Led output pin deifinitions.
- * All the leds are connectd to PORTD as follows:
- * pin 7: green - GGA sentence valid
- * pin 5: red - GGA sentence invalid
- * pin 4: green - RMC sentence valid
- * pin 2: red - RMC sentence invalid
- */
+   All the leds are connectd to PORTD as follows:
+   pin 7: green - GGA sentence valid
+   pin 5: red - GGA sentence invalid
+   pin 4: green - RMC sentence valid
+   pin 2: red - RMC sentence invalid
+*/
 #define GGA_GREEN 0B10000000
 #define GGA_RED 0B00100000
 #define RMC_GREEN 0B00010000
@@ -83,7 +92,7 @@ enum rx_states
 	READY = 0x00, /* Default state, ready to receive. Changes if $ is received. */
 	RX_MESSAGE = 0x01, /* Receiving the message between the $ and * delimiters. */
 	RX_CHECKSUM = 0x02, /* Receiving the checksum. Changes if \r\n  is received. */
-	COPY_TO_TX = 0x03, /* Default state, ready to receive. Changes if $ is received. */
+	START_TX = 0x03, /* Default state, ready to receive. Changes if $ is received. */
 };
 uint8_t state; /* Current system state. */
 
@@ -92,24 +101,23 @@ enum nmea_commands
 	NONE, GGA, RMC, ZDA
 };
 uint8_t rx_command; /* NMEA command being received. */
-uint8_t rx_field; /* Current field of NMEA command. */
+uint8_t rx_field_num; /* Current field of NMEA command. */
 uint8_t rx_field_size; /* Current field size. */
 
 char rx_buffer[BUFFER_SIZE]; /* Buffer for the received message. */
 uint8_t rx_buf_pos;
-bool rx_byte_ready; /* Received byte ready flag. */
-uint8_t rx_byte; /* Received byte. */
+volatile uint8_t rx_byte; /* Received byte. */
+uint8_t tbp_byte; /* Byte to process. */
 uint8_t calc_checksum; /* Calculated checksum of the received message. Calculated on the fly. */
 uint8_t rx_checksum; /* Checksum of the received NMEA sentence. */
 
-/* A lookup table for converting numerical values to hexadecimal digits. */
+/* Lookup table for converting numerical values to hexadecimal digits. */
 char hex_chars[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 /* TX variables */
 char tx_buffer[BUFFER_SIZE]; /* Buffer for the message to be sent. */
 uint8_t tx_buf_pos;
-bool tx_not_empty; /* TX has a message to send. Set to false when tx_buffer is empty. */
-bool tx_rts; /* TX ready to send. Set to true when RX is ready to send next byte. */
+volatile bool tx_has_data; /* TX has a message to send. Set to false when tx_buffer is empty. */
 
 int main(void)
 {
@@ -118,48 +126,34 @@ int main(void)
 	PORTD &= ALL_OFF;
 	usart_init();
 	reset_tx();
-	tx_rts = true;
 	reset_rx();
+	rx_byte = NO_DATA;
 	state = READY;
 	sei();
 
 	/* Main loop */
 	while (1)
 	{
-		/* Next byte is sent if there is one and TX is ready to send.
-		 * If null terminator or end of buffer is reached, TX is reset.
-		 */
-		if (tx_rts && tx_not_empty)
+		/* RX routine */
+		if(rx_byte)
 		{
-			if (tx_buf_pos < BUFFER_SIZE && tx_buffer[tx_buf_pos] != NO_DATA)
-			{
-				UDR0 = tx_buffer[tx_buf_pos];
-				tx_buf_pos++;
-				tx_rts = false;
-			}
-			else
-			{
-				reset_tx();
-			}
+			tbp_byte = rx_byte;
+			rx_byte = NO_DATA;
 		}
 
-		/* RX routine */
 		switch (state)
 		{
 		case READY:
 			/* READY: The system is ready to receive and remains is this state
 			 * until $ character is received.
 			 */
-			if (rx_byte_ready)
+			if (tbp_byte == DOLLAR)
 			{
-				rx_byte_ready = false;
-				if (rx_byte == DOLLAR)
-				{
-					rx_buffer[rx_buf_pos] = rx_byte;
-					rx_buf_pos++;
-					state = RX_MESSAGE;
-				}
+				rx_buffer[rx_buf_pos] = tbp_byte;
+				rx_buf_pos++;
+				state = RX_MESSAGE;
 			}
+			tbp_byte = NO_DATA;
 			break;
 		case RX_MESSAGE:
 			/* RX_MESSAGE: The system receives the message between $ and *
@@ -176,14 +170,12 @@ int main(void)
 			 * or is lost.
 			 * When * character is received the state changes to RX_CHECKSUM.
 			 */
-			if (rx_byte_ready)
+			if (tbp_byte)
 			{
-				rx_byte_ready = false;
-
 				/* If received character is $ or the buffer is overflown,
 				 * reset and return to READY state.
 				 */
-				if (rx_byte == DOLLAR || rx_buf_pos >= BUFFER_SIZE)
+				if (tbp_byte == DOLLAR || rx_buf_pos >= BUFFER_SIZE)
 				{
 					reset_rx();
 					break;
@@ -192,7 +184,7 @@ int main(void)
 				/* Comma and marks end of field, asterisk marks end of message
 				 * which is also end of the last field.
 				 */
-				if (rx_byte == COMMA || rx_byte == ASTERISK)
+				if (tbp_byte == COMMA || tbp_byte == ASTERISK)
 				{
 					bool field_valid = process_field();
 					if (!field_valid)
@@ -200,7 +192,7 @@ int main(void)
 						reset_rx();
 						break;
 					}
-					rx_field++;
+					rx_field_num++;
 					rx_field_size = 0;
 				}
 				else
@@ -208,20 +200,22 @@ int main(void)
 					rx_field_size++;
 				}
 
-				rx_buffer[rx_buf_pos] = rx_byte;
+				rx_buffer[rx_buf_pos] = tbp_byte;
 				rx_buf_pos++;
 
 				/* If end of message, change state to RX_CHECKSUM
 				 * without affecting the calculated checksum.
 				 */
-				if (rx_byte == ASTERISK)
+				if (tbp_byte == ASTERISK)
 				{
 					state = RX_CHECKSUM;
 				}
 				else
 				{
-					calc_checksum ^= rx_byte;
+					calc_checksum ^= tbp_byte;
 				}
+
+				tbp_byte = NO_DATA;
 			}
 			break;
 		case RX_CHECKSUM:
@@ -230,23 +224,20 @@ int main(void)
 			 * compares it to the calculated value. If two values match,
 			 * a new checksum is calculated and added to the message.
 			 * Upon receiving the LF (\n) character which marks end of sentence
-			 * system state changes to COPY_TO_TX.
+			 * system state changes to START_TX.
 			 */
-			if (rx_byte_ready)
+			if (tbp_byte)
 			{
-				rx_byte_ready = false;
-
 				/* If received character is $ or * or the buffer is overflown,
 				 * reset and return to READY state.
 				 */
-				if (rx_byte == DOLLAR || rx_byte == ASTERISK
-						|| rx_buf_pos >= BUFFER_SIZE)
+				if (tbp_byte == DOLLAR || tbp_byte == ASTERISK || rx_buf_pos >= BUFFER_SIZE)
 				{
 					reset_rx();
 					break;
 				}
 				/* CR (\r) is received after the last character of checksum. */
-				else if (rx_byte == CR)
+				else if (tbp_byte == CR)
 				{
 					/* If match, calculate a new one, else reset. */
 					if (rx_checksum == calc_checksum)
@@ -256,12 +247,11 @@ int main(void)
 						{
 							checksum ^= rx_buffer[i];
 						}
-						rx_buffer[rx_buf_pos] =
-								hex_chars[(checksum & 0xF0) >> 4];
+						rx_buffer[rx_buf_pos] = hex_chars[(checksum & 0xF0) >> 4];
 						rx_buf_pos++;
 						rx_buffer[rx_buf_pos] = hex_chars[checksum & 0x0F];
 						rx_buf_pos++;
-						rx_buffer[rx_buf_pos] = rx_byte;
+						rx_buffer[rx_buf_pos] = tbp_byte;
 						rx_buf_pos++;
 					}
 					else
@@ -270,15 +260,15 @@ int main(void)
 					}
 				}
 				/* LF (\n) is the last symbol of NMEA message. */
-				else if (rx_byte == LF)
+				else if (tbp_byte == LF)
 				{
-					rx_buffer[rx_buf_pos] = rx_byte;
+					rx_buffer[rx_buf_pos] = tbp_byte;
 					rx_buf_pos++;
-					state = COPY_TO_TX;
+					state = START_TX;
 				}
 				/* Characters 0-9 and A-F are converted to numbers and added to checksum.
 				 * Digit symbols have values 0x30-0x39. Capital letters start from 0x41.
-				 * If the received byte is a letter (val. 0x4X) we substract 0x07
+				 * If the received byte is a letter (val. 0x4X) we subtract 0x07
 				 * to convert the value to 0x3A-0x3F. Bitwise AND with 0x0F converts
 				 * the value to 0x00-0x0F.
 				 * Previous value of the received checksum is rotated 4 bits left. If the first
@@ -288,31 +278,32 @@ int main(void)
 				 */
 				else
 				{
-					uint8_t val = rx_byte;
+					uint8_t val = tbp_byte;
 					if (val & 0x40)
 						val -= 0x07;
 					val &= 0x0F;
 					rx_checksum <<= 4;
 					rx_checksum |= val;
 				}
+
+				tbp_byte = NO_DATA;
 			}
 			break;
-		case COPY_TO_TX:
-			/* COPY_TO_TX: The received and reformatted message is transferred
+		case START_TX:
+			/* START_TX: The received and reformatted message is transferred
 			 * to TX buffer. If the buffer isn't empty, the system remains in
 			 * this state until the previous message is sent. After sending
 			 * the message to TX system moves to READY state.
 			 */
-
-			/* The new message is sent to TX only if it has no message to send. */
-			if (!tx_not_empty)
+			if (!tx_has_data)
 			{
+				reset_tx();
 				copy_msg_to_tx_buf();
-				tx_buf_pos = 0;
-				tx_not_empty = true;
+				tx_has_data = true;
+				UCSR0B |= (1 << UDRIE0); /* Enable buffer empty interrupt */
 				reset_rx();
+				PORTD &= ALL_OFF; /* Turn all the LEDs off. */
 			}
-			PORTD &= ALL_OFF; /* Turn all the leds off. */
 			break;
 		}
 		/* End RX routine */
@@ -362,8 +353,11 @@ bool process_field(void)
 		 * Dif:    $GPGGA,094053.00_,3204.4147X,N,03445.9649X,E,1,09,_1.1X,___28.7,M,__17.5,M,___._,____*69
 		 * Fields:      0          1          2 3           4 5 6  7     8       9 A      B C     D    E
 		 */
-		switch (rx_field)
+		switch (rx_field_num)
 		{
+		case 0x00:
+			/* Added for switch() optimization purposes. */
+			break;
 		case 0x01:
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
@@ -477,9 +471,10 @@ bool process_field(void)
 		 * Dif:    $GPRMC,094054.00_,A,3204.4144X,N,03445.9660X,E,___3.87X,110.45,231215,,XX*62
 		 * Fields:      0          1 2          3 4           5 6        7      8      9
 		 */
-		switch (rx_field)
+		switch (rx_field_num)
 		{
 		case 0x00:
+			/* Added for switch() optimization purposes. */
 			break;
 		case 0x01:
 			/* If time field is empty all the message is discarded. */
@@ -551,7 +546,7 @@ bool process_field(void)
 		 * Dif:    $GPZDA,142615.00_,26,12,2015,,*52
 		 * Fields:      0          1  2  3    4
 		 */
-		if (rx_field == 1)
+		if (rx_field_num == 1)
 		{
 			/* If time field is empty all the message is discarded. */
 			if (rx_field_size == 0)
@@ -583,7 +578,7 @@ void reset_tx(void)
 		tx_buffer[i] = NO_DATA;
 	}
 	tx_buf_pos = 0;
-	tx_not_empty = false;
+	tx_has_data = false;
 }
 
 /*
@@ -603,8 +598,9 @@ void reset_rx(void)
 	calc_checksum = 0x00;
 	rx_checksum = 0x00;
 	rx_command = NONE;
-	rx_field = 0;
+	rx_field_num = 0;
 	rx_field_size = 0;
+	tbp_byte = NO_DATA;
 	state = READY;
 }
 
@@ -638,21 +634,44 @@ void usart_init(void)
 	UBRR0L = (uint8_t) UBRR_VALUE;
 	/* Set frame format to 8 data bits, no parity, 1 stop bit */
 	UCSR0C |= (1 << UCSZ01) | (1 << UCSZ00);
-	/* Enable reception and RC complete interrupt */
+	/* Enable reception and transmission */
+	UCSR0B |= (1 << RXEN0) | (1 << TXEN0);
+	/* Enable RX Complete interrupt */
 	UCSR0B |= (1 << RXEN0) | (1 << RXCIE0);
-	/* Enable transmission and UDR0 empty interrupt */
-	UCSR0B |= (1 << TXEN0) | (1 << UDRIE0);
 }
 
-/* RX Complete interrupt service routine */
+
+/*
+ * Function: ISR(USART_RX_vect)
+ * ----------------------------
+ *   RX Complete interrupt service routine.
+ *
+ *   returns:	none
+ */
 ISR(USART_RX_vect)
 {
 	rx_byte = UDR0;
-	rx_byte_ready = true;
 }
 
-/* UART Data register empty service routine */
+/*
+ * Function: ISR(USART_UDRE_vect)
+ * ------------------------------
+ *   UART Data Register Empty service routine. Sends next byte to buffer
+ *   if end of sentence (null terminator) isn't reached. Otherwise clears
+ *   tx_has_data flag and disables UART Data Register Empty interrupt.
+ *
+ *   returns:	none
+ */
 ISR(USART_UDRE_vect)
 {
-	tx_rts = true;
+	if (tx_buffer[tx_buf_pos] != NO_DATA)
+	{
+		UDR0 = tx_buffer[tx_buf_pos];
+		tx_buf_pos++;
+	}
+	else
+	{
+		UCSR0B &= ~(1 << UDRIE0); /* Disable UDR0 empty interrupt */
+		tx_has_data = false;
+	}
 }
