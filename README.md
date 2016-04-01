@@ -116,8 +116,8 @@ The unit was tested in trains. Videos from the tests are available.
 
 ## Plans for future develompent
 
-1. Running all the system at 3.3V.
-2. Reducing the microcontroller speed to 8MHz or even lower.
+1. ~~Running all the system at 3.3V.~~ Done. See [prototype_v1.0.md](https://github.com/4z7dtf/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
+2. ~~Reducing the microcontroller speed to 8MHz or even lower.~~ Done. See [Release v1.0](https://github.com/4z7dtf/vx8_gps/releases/tag/v1.0) (commit 9e8273abed9b53197791b6e432649a282e6ca909).
 3. Adding a rechargeable battery and making the device USB chargeable.
 4. Building the project on a PCB instead of using ready modules.
 5. Assembling the device in one enclosure box.
