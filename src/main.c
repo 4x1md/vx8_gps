@@ -82,15 +82,14 @@ struct buffer
 
 /* Function prototypes. */
 bool process_field(void);
-void reset_buffer(struct buffer *);
-void copy_msg_to_tx_buf(void);
+void reset_buffer(volatile struct buffer *);
 void usart_init(void);
 
 /* RX variables */
 enum rx_states
 {
 	READY, /* Default state, ready to receive. Changes if $ is received. */
-	CMD_DETECT, /* Detecting message type (RMC, GGA etc.) Changes if comma is received. */
+	RX_TYPE_DETECT, /* Detecting message type (RMC, GGA etc.) Changes if comma is received. */
 	RX_MESSAGE, /* Receiving the message between the $ and * delimiters. */
 	RX_CHECKSUM, /* Receiving the checksum. Changes if \r\n  is received. */
 	START_TX, /* Sends the message to TX when tx_has_data flag is cleared. */
@@ -150,9 +149,51 @@ int main(void)
 			{
 				rx_buffer.buffer[rx_buffer.pos] = tbp_byte;
 				rx_buffer.pos++;
-				state = RX_MESSAGE;
+				state = RX_TYPE_DETECT;
 			}
 			tbp_byte = NULL;
+			break;
+
+		case RX_TYPE_DETECT:
+			/* RX_TYPE_DETECT: The system receives the first field of NMEA
+			 * sentence and when comma is received tries to detect sentence
+			 * type (GGA, RMC or ZDA). If supported sentence type is detected,
+			 * the state changes to RX_MESSAGE. Otherwise the system is reset
+			 * and returns to READY state.
+			 */
+			if (tbp_byte)
+			{
+				rx_buffer.buffer[rx_buffer.pos] = tbp_byte;
+				rx_buffer.pos++;
+				calc_checksum ^= tbp_byte;
+
+				if(tbp_byte == COMMA)
+				{
+					if (rx_buffer.buffer[3] == 'G' && rx_buffer.buffer[4] == 'G' && rx_buffer.buffer[5] == 'A')
+					{
+						rx_command = GGA;
+					}
+					else if (rx_buffer.buffer[3] == 'R' && rx_buffer.buffer[4] == 'M' && rx_buffer.buffer[5] == 'C')
+					{
+						rx_command = RMC;
+					}
+					else if (rx_buffer.buffer[3] == 'Z' && rx_buffer.buffer[4] == 'D' && rx_buffer.buffer[5] == 'A')
+					{
+						rx_command = ZDA;
+					}
+
+					if (rx_command != NONE)
+					{
+						rx_field_num++;
+						state = RX_MESSAGE;
+					}
+					else
+					{
+						state = RESET;
+					}
+				}
+				tbp_byte = NULL;
+			}
 			break;
 
 		case RX_MESSAGE:
@@ -299,7 +340,11 @@ int main(void)
 			if (!tx_has_data)
 			{
 				reset_buffer(&tx_buffer);
-				copy_msg_to_tx_buf();
+				/* Copy contents of RX buffer to TX buffer. */
+				for (uint8_t i = 0; rx_buffer.buffer[i]; i++)
+				{
+					tx_buffer.buffer[i] = rx_buffer.buffer[i];
+				}
 				tx_has_data = true;
 				UDR0 = tx_buffer.buffer[0];
 				UCSR0B |= (1 << UDRIE0); /* Enable buffer empty interrupt */
@@ -342,25 +387,6 @@ bool process_field(void)
 
 	switch (rx_command)
 	{
-	case NONE: /* Determine command type */
-		if (rx_buffer.buffer[3] == 'G' && rx_buffer.buffer[4] == 'G' && rx_buffer.buffer[5] == 'A')
-		{
-			rx_command = GGA;
-			break;
-		}
-		if (rx_buffer.buffer[3] == 'R' && rx_buffer.buffer[4] == 'M' && rx_buffer.buffer[5] == 'C')
-		{
-			rx_command = RMC;
-			break;
-		}
-		if (rx_buffer.buffer[3] == 'Z' && rx_buffer.buffer[4] == 'D' && rx_buffer.buffer[5] == 'A')
-		{
-			rx_command = ZDA;
-			break;
-		}
-		res = false;
-		break;
-
 	case GGA:
 		/* NEO-6M vs. Yaesu VX-8
 		 * NEO:    $GPGGA,094053.00,3204.41475,N,03445.96499,E,1,09,1.12,28.7,M,17.5,M,,*69
@@ -586,7 +612,7 @@ bool process_field(void)
  *
  *   returns:	none
  */
-void reset_buffer(struct buffer *buf)
+void reset_buffer(volatile struct buffer *buf)
 {
 	for (uint8_t i = 0; i < BUFFER_SIZE; i++)
 	{
@@ -594,22 +620,6 @@ void reset_buffer(struct buffer *buf)
 	}
 	buf->pos = 0;
 }
-
-/*
- * Function: copy_msg_to_tx_buf
- * ----------------------------
- *   Copies contents of RX buffer to TX buffer.
- *
- *   returns:	none
- */
-void copy_msg_to_tx_buf(void)
-{
-	for (uint8_t i = 0; rx_buffer.buffer[i]; i++)
-	{
-		tx_buffer.buffer[i] = rx_buffer.buffer[i];
-	}
-}
-
 
 /* UART routines */
 /*
