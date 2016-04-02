@@ -50,28 +50,15 @@
 #define true 0x01
 #define false 0x00
 
-/* Function prototypes. */
-bool process_field(void);
-void reset_rx(void);
-void reset_tx(void);
-void copy_msg_to_tx_buf(void);
-void usart_init(void);
-
 #define USART_BAUDRATE 9600
 #define UBRR_VALUE (((F_CPU / (USART_BAUDRATE * 16UL))) - 1)
 
-/* Led output pin deifinitions.
-   All the leds are connectd to PORTD as follows:
-   pin 7: green - GGA sentence valid
-   pin 5: red - GGA sentence invalid
-   pin 4: green - RMC sentence valid
-   pin 2: red - RMC sentence invalid
-*/
-#define GGA_GREEN 0B10000000
-#define GGA_RED 0B00100000
-#define RMC_GREEN 0B00010000
-#define RMC_RED 0B00000100
-#define ALL_OFF 0B00000011
+/* Led output pin deifinitions. */
+#define GGA_GREEN 0B10000000 /* GGA sentence invalid */
+#define GGA_RED 0B01000000 /* GGA sentence invalid */
+#define RMC_GREEN 0B00100000 /* RMC sentence valid */
+#define RMC_RED 0B00010000 /* RMC sentence invalid */
+#define ALL_OFF 0B00000011 /* All LEDs off */
 
 /* Different sources state that maximum sentence length is 80 characters
  * plus CR and LF. Actual Yaesu FGPS-2 GPS output shows that this standard
@@ -84,15 +71,30 @@ void usart_init(void);
 #define ASTERISK '*'
 #define CR 0x0D
 #define LF 0x0A
-#define NO_DATA 0x00 /* Marks no data received by RX. */
+#define NULL 0x00 /* No data and string termination in RX and TX buffers. */
+
+/* TX and RX buffers structure */
+struct buffer
+{
+	char buffer[BUFFER_SIZE];
+	uint8_t pos;
+};
+
+/* Function prototypes. */
+bool process_field(void);
+void reset_buffer(struct buffer *);
+void copy_msg_to_tx_buf(void);
+void usart_init(void);
 
 /* RX variables */
 enum rx_states
 {
-	READY = 0x00, /* Default state, ready to receive. Changes if $ is received. */
-	RX_MESSAGE = 0x01, /* Receiving the message between the $ and * delimiters. */
-	RX_CHECKSUM = 0x02, /* Receiving the checksum. Changes if \r\n  is received. */
-	START_TX = 0x03, /* Default state, ready to receive. Changes if $ is received. */
+	READY, /* Default state, ready to receive. Changes if $ is received. */
+	CMD_DETECT, /* Detecting message type (RMC, GGA etc.) Changes if comma is received. */
+	RX_MESSAGE, /* Receiving the message between the $ and * delimiters. */
+	RX_CHECKSUM, /* Receiving the checksum. Changes if \r\n  is received. */
+	START_TX, /* Sends the message to TX when tx_has_data flag is cleared. */
+	RESET, /* Resets the RX to READY state. */
 };
 uint8_t state; /* Current system state. */
 
@@ -104,8 +106,7 @@ uint8_t rx_command; /* NMEA command being received. */
 uint8_t rx_field_num; /* Current field of NMEA command. */
 uint8_t rx_field_size; /* Current field size. */
 
-char rx_buffer[BUFFER_SIZE]; /* Buffer for the received message. */
-uint8_t rx_buf_pos;
+struct buffer rx_buffer; /* Buffer for the received message. */
 volatile uint8_t rx_byte; /* Received byte. */
 uint8_t tbp_byte; /* Byte to process. */
 uint8_t calc_checksum; /* Calculated checksum of the received message. Calculated on the fly. */
@@ -115,8 +116,7 @@ uint8_t rx_checksum; /* Checksum of the received NMEA sentence. */
 char hex_chars[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 /* TX variables */
-char tx_buffer[BUFFER_SIZE]; /* Buffer for the message to be sent. */
-uint8_t tx_buf_pos;
+struct buffer tx_buffer;
 volatile bool tx_has_data; /* TX has a message to send. Set to false when tx_buffer is empty. */
 
 int main(void)
@@ -125,10 +125,9 @@ int main(void)
 	DDRD = DDRD | 0B11111100;
 	PORTD &= ALL_OFF;
 	usart_init();
-	reset_tx();
-	reset_rx();
-	rx_byte = NO_DATA;
-	state = READY;
+	reset_buffer(&tx_buffer);
+	rx_byte = NULL;
+	state = RESET;
 	sei();
 
 	/* Main loop */
@@ -138,7 +137,7 @@ int main(void)
 		if(rx_byte)
 		{
 			tbp_byte = rx_byte;
-			rx_byte = NO_DATA;
+			rx_byte = NULL;
 		}
 
 		switch (state)
@@ -149,11 +148,11 @@ int main(void)
 			 */
 			if (tbp_byte == DOLLAR)
 			{
-				rx_buffer[rx_buf_pos] = tbp_byte;
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = tbp_byte;
+				rx_buffer.pos++;
 				state = RX_MESSAGE;
 			}
-			tbp_byte = NO_DATA;
+			tbp_byte = NULL;
 			break;
 		case RX_MESSAGE:
 			/* RX_MESSAGE: The system receives the message between $ and *
@@ -175,9 +174,9 @@ int main(void)
 				/* If received character is $ or the buffer is overflown,
 				 * reset and return to READY state.
 				 */
-				if (tbp_byte == DOLLAR || rx_buf_pos >= BUFFER_SIZE)
+				if (tbp_byte == DOLLAR || rx_buffer.pos >= BUFFER_SIZE)
 				{
-					reset_rx();
+					state = RESET;
 					break;
 				}
 
@@ -189,7 +188,7 @@ int main(void)
 					bool field_valid = process_field();
 					if (!field_valid)
 					{
-						reset_rx();
+						state = RESET;
 						break;
 					}
 					rx_field_num++;
@@ -200,8 +199,8 @@ int main(void)
 					rx_field_size++;
 				}
 
-				rx_buffer[rx_buf_pos] = tbp_byte;
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = tbp_byte;
+				rx_buffer.pos++;
 
 				/* If end of message, change state to RX_CHECKSUM
 				 * without affecting the calculated checksum.
@@ -215,7 +214,7 @@ int main(void)
 					calc_checksum ^= tbp_byte;
 				}
 
-				tbp_byte = NO_DATA;
+				tbp_byte = NULL;
 			}
 			break;
 		case RX_CHECKSUM:
@@ -231,9 +230,9 @@ int main(void)
 				/* If received character is $ or * or the buffer is overflown,
 				 * reset and return to READY state.
 				 */
-				if (tbp_byte == DOLLAR || tbp_byte == ASTERISK || rx_buf_pos >= BUFFER_SIZE)
+				if (tbp_byte == DOLLAR || tbp_byte == ASTERISK || rx_buffer.pos >= BUFFER_SIZE)
 				{
-					reset_rx();
+					state = RESET;
 					break;
 				}
 				/* CR (\r) is received after the last character of checksum. */
@@ -243,27 +242,27 @@ int main(void)
 					if (rx_checksum == calc_checksum)
 					{
 						uint8_t checksum = 0x00;
-						for (uint8_t i = 1; i < (rx_buf_pos - 1); i++)
+						for (uint8_t i = 1; i < (rx_buffer.pos - 1); i++)
 						{
-							checksum ^= rx_buffer[i];
+							checksum ^= rx_buffer.buffer[i];
 						}
-						rx_buffer[rx_buf_pos] = hex_chars[(checksum & 0xF0) >> 4];
-						rx_buf_pos++;
-						rx_buffer[rx_buf_pos] = hex_chars[checksum & 0x0F];
-						rx_buf_pos++;
-						rx_buffer[rx_buf_pos] = tbp_byte;
-						rx_buf_pos++;
+						rx_buffer.buffer[rx_buffer.pos] = hex_chars[(checksum & 0xF0) >> 4];
+						rx_buffer.pos++;
+						rx_buffer.buffer[rx_buffer.pos] = hex_chars[checksum & 0x0F];
+						rx_buffer.pos++;
+						rx_buffer.buffer[rx_buffer.pos] = tbp_byte;
+						rx_buffer.pos++;
 					}
 					else
 					{
-						reset_rx();
+						state = RESET;
 					}
 				}
 				/* LF (\n) is the last symbol of NMEA message. */
 				else if (tbp_byte == LF)
 				{
-					rx_buffer[rx_buf_pos] = tbp_byte;
-					rx_buf_pos++;
+					rx_buffer.buffer[rx_buffer.pos] = tbp_byte;
+					rx_buffer.pos++;
 					state = START_TX;
 				}
 				/* Characters 0-9 and A-F are converted to numbers and added to checksum.
@@ -286,7 +285,7 @@ int main(void)
 					rx_checksum |= val;
 				}
 
-				tbp_byte = NO_DATA;
+				tbp_byte = NULL;
 			}
 			break;
 		case START_TX:
@@ -297,13 +296,27 @@ int main(void)
 			 */
 			if (!tx_has_data)
 			{
-				reset_tx();
+				reset_buffer(&tx_buffer);
 				copy_msg_to_tx_buf();
 				tx_has_data = true;
+				UDR0 = tx_buffer.buffer[0];
 				UCSR0B |= (1 << UDRIE0); /* Enable buffer empty interrupt */
-				reset_rx();
+				state = RESET;
 				PORTD &= ALL_OFF; /* Turn all the LEDs off. */
 			}
+			break;
+
+		case RESET:
+			/* RESET: resets the RX to READY state.
+			 */
+			reset_buffer(&rx_buffer);
+			calc_checksum = 0x00;
+			rx_checksum = 0x00;
+			rx_command = NONE;
+			rx_field_num = 0;
+			rx_field_size = 0;
+			tbp_byte = NULL;
+			state = READY;
 			break;
 		}
 		/* End RX routine */
@@ -328,17 +341,17 @@ bool process_field(void)
 	switch (rx_command)
 	{
 	case NONE: /* Determine command type */
-		if (rx_buffer[3] == 'G' && rx_buffer[4] == 'G' && rx_buffer[5] == 'A')
+		if (rx_buffer.buffer[3] == 'G' && rx_buffer.buffer[4] == 'G' && rx_buffer.buffer[5] == 'A')
 		{
 			rx_command = GGA;
 			break;
 		}
-		if (rx_buffer[3] == 'R' && rx_buffer[4] == 'M' && rx_buffer[5] == 'C')
+		if (rx_buffer.buffer[3] == 'R' && rx_buffer.buffer[4] == 'M' && rx_buffer.buffer[5] == 'C')
 		{
 			rx_command = RMC;
 			break;
 		}
-		if (rx_buffer[3] == 'Z' && rx_buffer[4] == 'D' && rx_buffer[5] == 'A')
+		if (rx_buffer.buffer[3] == 'Z' && rx_buffer.buffer[4] == 'D' && rx_buffer.buffer[5] == 'A')
 		{
 			rx_command = ZDA;
 			break;
@@ -367,9 +380,9 @@ bool process_field(void)
 				break;
 			}
 			/* Time field is fixed to 10 characters: hhmmss.sss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 6, 3);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 10;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 6, 3);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 10;
 			break;
 		case 0x02:
 			if (rx_field_size == 0)
@@ -377,30 +390,30 @@ bool process_field(void)
 			else
 				PORTD |= GGA_GREEN; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 9;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 4, 4);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 9;
 			break;
 		case 0x03:
 			/* Latitude N/S field is set to N if empty. */
 			if (rx_field_size == 0)
 			{
-				rx_buffer[rx_buf_pos] = 'N';
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = 'N';
+				rx_buffer.pos++;
 			}
 			break;
 		case 0x04:
 			/* Longitude field is fixed to 10 characters: dddmm.ssss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 5, 4);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 10;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 5, 4);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 10;
 			break;
 		case 0x05:
 			/* Longitude E/W field is set to E if empty. */
 			if (rx_field_size == 0)
 			{
-				rx_buffer[rx_buf_pos] = 'E';
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = 'E';
+				rx_buffer.pos++;
 			}
 			break;
 		case 0x06:
@@ -408,57 +421,57 @@ bool process_field(void)
 			break;
 		case 0x07:
 			/* Number of satellites is integer fixed to 2 characters. */
-			fix_int_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 2);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 2;
+			fix_int_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], 2);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 2;
 			break;
 		case 0x08:
 			/* Horizontal dilution of position field is fixed to 4 characters: xx.x.
 			 * In the case of NEO-U-6 it means that one character after the decimal point
 			 * will be truncated. */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 2, 1);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 4;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 2, 1);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 4;
 			break;
 		case 0x09:
 			/* Altitude above mean sea is fixed to 7 characters: aaaaa.a */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 5, 1);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 7;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 5, 1);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 7;
 			break;
 		case 0x0A:
 			/* Altitude units are set to M (meters) if this field is empty. */
 			if (rx_field_size == 0)
 			{
-				rx_buffer[rx_buf_pos] = 'M';
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = 'M';
+				rx_buffer.pos++;
 			}
 			break;
 		case 0x0B:
 			/* Height of geoid field is fixed to 6 characters: ddd.mm */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 1);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 6;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 4, 1);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 6;
 			break;
 		case 0x0C:
 			/* Altitude units are set to M (meters) if this field is empty. */
 			if (rx_field_size == 0)
 			{
-				rx_buffer[rx_buf_pos] = 'M';
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = 'M';
+				rx_buffer.pos++;
 			}
 			break;
 		case 0x0D:
 			/* Time since last DGPS update field is fixed to 5 characters: ddd.m */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 3, 1);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 5;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 3, 1);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 5;
 			break;
 		case 0x0E:
 			/* DGPS station ID number is integer fixed to 4 characters. */
-			fix_int_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 4;
+			fix_int_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], 4);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 4;
 			break;
 		}
 		break;
@@ -485,9 +498,9 @@ bool process_field(void)
 				break;
 			}
 			/* Time field is fixed to 10 characters: hhmmss.sss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 6, 3);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 10;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 6, 3);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 10;
 			break;
 		case 0x02:
 			break;
@@ -497,43 +510,43 @@ bool process_field(void)
 			else
 				PORTD |= RMC_GREEN; /* Green LED on. */
 			/* Latitude field is fixed to 9 characters: ddmm.ssss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 4);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 9;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 4, 4);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 9;
 			break;
 		case 0x04:
 			/* Latitude N/S field is set to N if empty. */
 			if (rx_field_size == 0)
 			{
-				rx_buffer[rx_buf_pos] = 'N';
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = 'N';
+				rx_buffer.pos++;
 			}
 			break;
 		case 0x05:
 			/* Longitude field is fixed to 10 characters: dddmm.ssss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 5, 4);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 10;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 5, 4);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 10;
 			break;
 		case 0x06:
 			/* Longitude E/W field is set to E if empty. */
 			if (rx_field_size == 0)
 			{
-				rx_buffer[rx_buf_pos] = 'E';
-				rx_buf_pos++;
+				rx_buffer.buffer[rx_buffer.pos] = 'E';
+				rx_buffer.pos++;
 			}
 			break;
 		case 0x07:
 			/* Speed field is fixed to 7 characters: ssss.ss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 4, 2);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 7;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 4, 2);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 7;
 			break;
 		case 0x08:
 			/* Track angle field is fixed to 6 characters: ddd.mm */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 3, 2);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 6;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 3, 2);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 6;
 			break;
 		}
 		break;
@@ -555,9 +568,9 @@ bool process_field(void)
 				break;
 			}
 			/* Time field is fixed to 10 characters: hhmmss.sss */
-			fix_decimal_field_len(&rx_buffer[rx_buf_pos - rx_field_size], 6, 3);
-			rx_buf_pos -= rx_field_size;
-			rx_buf_pos += 10;
+			fix_decimal_field_len(&rx_buffer.buffer[rx_buffer.pos - rx_field_size], rx_field_size, 6, 3);
+			rx_buffer.pos -= rx_field_size;
+			rx_buffer.pos += 10;
 		}
 		break;
 	}
@@ -565,43 +578,19 @@ bool process_field(void)
 }
 
 /*
- * Function: reset_tx
+ * Function: reset_buffer
  * ------------------
- *   Resets transmit buffer to ready-to-send state.
+ *   Resets given buffer to empty state.
  *
  *   returns:	none
  */
-void reset_tx(void)
+void reset_buffer(struct buffer *buf)
 {
 	for (uint8_t i = 0; i < BUFFER_SIZE; i++)
 	{
-		tx_buffer[i] = NO_DATA;
+		buf->buffer[i] = NULL;
 	}
-	tx_buf_pos = 0;
-	tx_has_data = false;
-}
-
-/*
- * Function: reset_rx
- * ------------------
- *   Resets receive buffer and sets system state to READY.
- *
- *   returns:	none
- */
-void reset_rx(void)
-{
-	for (uint8_t i = 0; i < BUFFER_SIZE; i++)
-	{
-		rx_buffer[i] = NO_DATA;
-	}
-	rx_buf_pos = 0;
-	calc_checksum = 0x00;
-	rx_checksum = 0x00;
-	rx_command = NONE;
-	rx_field_num = 0;
-	rx_field_size = 0;
-	tbp_byte = NO_DATA;
-	state = READY;
+	buf->pos = 0;
 }
 
 /*
@@ -613,11 +602,12 @@ void reset_rx(void)
  */
 void copy_msg_to_tx_buf(void)
 {
-	for (uint8_t i = 0; i < BUFFER_SIZE; i++)
+	for (uint8_t i = 0; rx_buffer.buffer[i]; i++)
 	{
-		tx_buffer[i] = rx_buffer[i];
+		tx_buffer.buffer[i] = rx_buffer.buffer[i];
 	}
 }
+
 
 /* UART routines */
 /*
@@ -637,7 +627,7 @@ void usart_init(void)
 	/* Enable reception and transmission */
 	UCSR0B |= (1 << RXEN0) | (1 << TXEN0);
 	/* Enable RX Complete interrupt */
-	UCSR0B |= (1 << RXEN0) | (1 << RXCIE0);
+	UCSR0B |= (1 << RXCIE0);
 }
 
 
@@ -664,10 +654,10 @@ ISR(USART_RX_vect)
  */
 ISR(USART_UDRE_vect)
 {
-	if (tx_buffer[tx_buf_pos] != NO_DATA)
+	if (tx_buffer.buffer[tx_buffer.pos] != NULL)
 	{
-		UDR0 = tx_buffer[tx_buf_pos];
-		tx_buf_pos++;
+		UDR0 = tx_buffer.buffer[tx_buffer.pos];
+		tx_buffer.pos++;
 	}
 	else
 	{

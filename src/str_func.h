@@ -17,4 +17,4 @@ void add_zeros_right(char[], uint8_t, uint8_t);
 void rm_chars_right(char[], uint8_t, uint8_t);
 
 void fix_int_field_len(char[], uint8_t);
-void fix_decimal_field_len(char[], uint8_t, uint8_t);
+void fix_decimal_field_len(char[], uint8_t, uint8_t, uint8_t);

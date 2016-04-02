@@ -200,15 +200,14 @@ void fix_int_field_len(char field[], uint8_t new_len)
  *   removes characters at the end if required.
  *
  *   str: the source string
+ *   field_len: source field length
  *   new_int_len: the new length of the integer part
  *   new_frac_len: the new length of the fractional part
  *
  *   returns:	none
  */
-void fix_decimal_field_len(char field[], uint8_t new_int_len, uint8_t new_frac_len)
+void fix_decimal_field_len(char field[], uint8_t field_len, uint8_t new_int_len, uint8_t new_frac_len)
 {
-	uint8_t field_len = str_len(field);
-
 	/* If the field is empty, decimal point is added before adding zeros. */
 	if (!field_len)
 	{
