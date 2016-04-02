@@ -154,6 +154,7 @@ int main(void)
 			}
 			tbp_byte = NULL;
 			break;
+
 		case RX_MESSAGE:
 			/* RX_MESSAGE: The system receives the message between $ and *
 			 * delimiters. NMEA sentence checksum is calculated on the fly.
@@ -288,6 +289,7 @@ int main(void)
 				tbp_byte = NULL;
 			}
 			break;
+
 		case START_TX:
 			/* START_TX: The received and reformatted message is transferred
 			 * to TX buffer. If the buffer isn't empty, the system remains in
@@ -630,7 +632,6 @@ void usart_init(void)
 	UCSR0B |= (1 << RXCIE0);
 }
 
-
 /*
  * Function: ISR(USART_RX_vect)
  * ----------------------------
@@ -654,10 +655,10 @@ ISR(USART_RX_vect)
  */
 ISR(USART_UDRE_vect)
 {
+	tx_buffer.pos++;
 	if (tx_buffer.buffer[tx_buffer.pos] != NULL)
 	{
 		UDR0 = tx_buffer.buffer[tx_buffer.pos];
-		tx_buffer.pos++;
 	}
 	else
 	{
