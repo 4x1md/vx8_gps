@@ -1,5 +1,5 @@
 # DIY GPS module for Yaesu VX-8DR/VX-8DE handheld transceiver
-GPS module for Yaesu VX-8DR/DE handheld transceivers with ublox NEO-6M chip and Arduino Nano by Dmitry Melnichansky 4Z7DTF.
+GPS module for Yaesu VX-8DR/DE handheld transceivers with ublox NEO-6M chip and Arduino Nano by Dmitry Melnichansky 4Z7DTF (4X5DM since June 2016).
 
 ## Overview
 
@@ -9,11 +9,11 @@ After receiving far APRS stations during a strong tropo over the Mediterranean I
 
 I started from writing a Python program which was sending NMEA sentences to the transceiver. After some research I discovered the required message format and wrote a program which drew flowers on APRS map.
 
-![APRS flower](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/aprs_flower.png)
+![APRS flower](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/aprs_flower.png)
 
 Later, [David Fannin's project](https://github.com/dfannin/arduino-vx8r-gps) inspired me to build my own GPS module. Thanks to his project I found out the ublox NEO-6M chip and a simple search on AliExpress showed that a ready module can be puchased for $10-20.
 
-I wrote my own software which isn't based on David Fannin's code. I started it as Arduino project but after finding out that the standard Arduino Serial library doesn't support interrupt driven writing and reading I decided to write it in pure C. After small changes the C code can be compiled in Arduino environment. The Arduino code is located in [/arduino/vx8_gps_16mhz folder](https://github.com/4z7dtf/vx8_gps/blob/master/arduino/vx8_gps_16mhz) of this repository.
+I wrote my own software which isn't based on David Fannin's code. I started it as Arduino project but after finding out that the standard Arduino Serial library doesn't support interrupt driven writing and reading I decided to write it in pure C. After small changes the C code can be compiled in Arduino environment. The Arduino code is located in [/arduino/vx8_gps_16mhz folder](https://github.com/4x5dm/vx8_gps/blob/master/arduino/vx8_gps_16mhz) of this repository.
 
 I tried to document this project as much as possible and I hope it will be interesting and useful for other radio amateurs.
 
@@ -33,7 +33,7 @@ $GPGGA,200124.000,0000.0000,N,00000.0000,E,0,00,00.0,00000.0,M,0000.0,M,000.0,00
 ```
 Sending a sentence with empty fields will result in gibberish on the GPS screen of VX-8. Here is what we'll get.
 
-![Yaesu VX-8DE](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_0.jpg)
+![Yaesu VX-8DE](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_0.jpg)
 
 Allthough the sentence accords with the standard, the transceiver isn't able to process it correctly.
 
@@ -46,9 +46,9 @@ $GPGGA,999999.000,73DE.0000,!,Z7DTF.NOPQ,4,1,04
 ```
 The time in the first field is invalid, the latitude and longitude fields have letters instead of numbers, the North/South and East/West fields have invalid characters as well. The checksum is missing. Should it be thrown away by the receiving device? Yes, sure! But let's see how VX-8 will respond!
 
-![Yaesu VX-8DE](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_1a.jpg)
+![Yaesu VX-8DE](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_1a.jpg)
 
-![Yaesu VX-8DE](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_1b.jpg)
+![Yaesu VX-8DE](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_1b.jpg)
 
 Have you ever thought about writing some text on the display of your VX-8? Or maybe about setting the time to 89:91:75? Now you know how to do it!
 
@@ -58,7 +58,7 @@ $GPGGA,999999.000,ello.ABCD,H,itHub.ABCD,G,1,04
 ```
 And the output is:
 
-![Yaesu VX-8DE](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_2.jpg)
+![Yaesu VX-8DE](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_2.jpg)
 
 Note that last two fields of our so called NMEA sentence mean that there was a valid GPS fix and that it was acquired from 4 satellites. This is exactly what we see on the display: satellites icon with number 4 under it.  This is enough for the transceiver to enable APRS beacon transmission. If you press the internet (TX PO) key these coordinates will be transmitted. Obviously, APRS site will mark such packet as invalid.
 
@@ -68,7 +68,7 @@ If you want to try it your self you'll need a standard programming cable (origin
 
 ## Hardware
 
-![Schematic](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_gps_connections.png)
+![Schematic](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_connections.png)
 
 The hardware is quite simple. GY-GPS6MV2 GPS module transmits its data to the Arduino which does necessary processing and sends it to the transceiver. Allthough the communication between the original Yaesu FGPS2 module and the radio is bi-directional, in my project I decided to make it unidirectional from GPS to radio. Not only is the bi-directional communication useless in this case but also requires one more serial port. This configuration uses only one serial port to communicate with both devices.
 
@@ -90,17 +90,17 @@ To be completed...
 
 ### Arduino Nano
 
-![Prototype](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_prototype_1.jpg)
+![Prototype](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_prototype_1.jpg)
 
-![Prototype](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_prototype_2.jpg)
+![Prototype](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_prototype_2.jpg)
 
-![Prototype](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_prototype_3.jpg)
+![Prototype](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_prototype_3.jpg)
 
 ### Standalone Microcontroller v1.0
 
 The prototype v1.0 is built on a dedicated PCB with a standalone ATmega328P-20PU microcontroller in 28 pin DIP package.
 
-Refer to [prototype_v1.0.md](https://github.com/4z7dtf/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
+Refer to [prototype_v1.0.md](https://github.com/4x5dm/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
 
 ## Field tests
 
@@ -109,15 +109,15 @@ The unit was tested in trains. Videos from the tests are available.
 1. [Test 1: Herzliya station](http://www.youtube.com/watch?v=POHEborbWdw)
 2. [Test 2: Kiryat Gat station](https://www.youtube.com/watch?v=_s_EKdAwrpI)
 
-![GPS in train](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_test_0.jpg)
+![GPS in train](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_test_0.jpg)
 
-![GPS in train](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_test_1.jpg)
+![GPS in train](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_test_1.jpg)
 
 
 ## Plans for future develompent
 
-1. [x] ~~Running all the system at 3.3V.~~ See [prototype_v1.0.md](https://github.com/4z7dtf/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
-2. [x] ~~Reducing the microcontroller speed to 8MHz or even lower.~~ See [Release v1.0](https://github.com/4z7dtf/vx8_gps/releases/tag/v1.0) ([commit 9e8273a](https://github.com/4z7dtf/vx8_gps/commit/9e8273abed9b53197791b6e432649a282e6ca909)) .
+1. [x] ~~Running all the system at 3.3V.~~ See [prototype_v1.0.md](https://github.com/4x5dm/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
+2. [x] ~~Reducing the microcontroller speed to 8MHz or even lower.~~ See [Release v1.0](https://github.com/4x5dm/vx8_gps/releases/tag/v1.0) ([commit 9e8273a](https://github.com/4x5dm/vx8_gps/commit/9e8273abed9b53197791b6e432649a282e6ca909)) .
 3. [ ] Adding a rechargeable battery and making the device USB chargeable.
 4. [ ] Building the project on a PCB instead of using ready modules.
 5. [ ] Assembling the device in one enclosure box.
@@ -142,10 +142,10 @@ Optional/questionable features:
 ## Questions? Suggestions?
 You are more than welcome to contact me with any questions, suggestions or propositions regarding this project. You can:
 
-1. Visit [my QRZ.COM page](https://www.qrz.com/db/4Z7DTF)
+1. Visit [my QRZ.COM page](https://www.qrz.com/db/4X5DM)
 2. Visit [my Facebook profile](https://www.facebook.com/Dima.Meln)
 3. Write me an email to iosaaris =at= gmail dot com
 
-73 de 4Z7DTF
+73 de 4X5DM ex 4Z7DTF
 
-![73's](https://raw.githubusercontent.com/4z7dtf/vx8_gps/master/docs/images/vx8_73.jpg)
+![73's](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_73.jpg)
