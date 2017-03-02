@@ -102,6 +102,8 @@ The prototype v1.0 is built on a dedicated PCB with a standalone ATmega328P-20PU
 
 Refer to [prototype_v1.0.md](https://github.com/4x5dm/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
 
+![PCB](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v1.0_pcb_5.jpg)
+
 ## Field tests
 
 The unit was tested in trains. Videos from the tests are available.
