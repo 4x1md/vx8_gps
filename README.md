@@ -1,4 +1,4 @@
-# DIY GPS module for Yaesu VX-8DR/VX-8DE handheld transceiver
+# DIY GPS Module for Yaesu VX-8DR/VX-8DE Handheld Transceiver
 GPS module for Yaesu VX-8DR/DE handheld transceivers with ublox NEO-6M chip and Arduino Nano by Dmitry Melnichansky 4Z7DTF (4X5DM since June 2016).
 
 ## Overview
@@ -86,9 +86,9 @@ The GY-GPS6MV2 GPS recevier and the Arduino Nano clone were both purchases on Al
 
 To be completed...
 
-## Hardware Versions
+## Development history
 
-### Arduino Nano
+### First protoype: Arduino Nano and u-blox NEO-6M
 
 The first version was built with readily available modules on a prototype PCB.
 
@@ -112,11 +112,11 @@ This version has a USB-to-UART IC which allows the GPS to be used as a programmi
 
 The circuit diagram of this version can be found [here](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v2.0_schematic.png). Design files are located [here](https://github.com/4x1md/vx8_gps/tree/master/pcbs/vx8_gps_prototype_v2.0).
 
-![PCB](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v2.0_pcb)
+![PCB](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v2.0_pcb.png)
 
 ### PCB v3.0
 
-This version was built on a two-sided PCB, mostly with SMD parts. Both ATmega328P microcontroller and the GPS module are SMT devices. The size of this PCB is 43.5x43.5mm and it was designed to fit a small plastic enclosure box.
+This version was built on a two-layer PCB. Most parts including ATmega328P microcontroller and the GPS module are SMD. The size of this PCB is 43.5x43.5mm and it was designed to fit a small plastic enclosure box.
 
 Refer to [prototype_v3.0.md](https://github.com/4x5dm/vx8_gps/blob/master/docs/prototype_v3.0.md) for details.
 
