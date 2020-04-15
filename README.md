@@ -1,5 +1,5 @@
 # DIY GPS Module for Yaesu VX-8DR/VX-8DE Handheld Transceiver
-GPS module for Yaesu VX-8DR/DE handheld transceivers with ublox NEO-6M chip and Arduino Nano by Dmitry Melnichansky 4Z7DTF (4X5DM since June 2016).
+GPS module for Yaesu VX-8DR/DE handheld transceivers with ublox NEO-6M chip and Arduino Nano by Dmitry Melnichansky 4Z7DTF (~~4X5DM since June 2016~~ 4X1MD since July 24, 2017).
 
 ## Overview
 
