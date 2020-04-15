@@ -1,0 +1,7 @@
+# Eclipse
+.project
+.cproject
+/.settings/
+
+# Compiler output
+/Release/

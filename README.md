@@ -86,9 +86,11 @@ The GY-GPS6MV2 GPS recevier and the Arduino Nano clone were both purchases on Al
 
 To be completed...
 
-## Prototypes
+## Hardware Versions
 
 ### Arduino Nano
+
+The first version was built with readily available modules on a prototype PCB.
 
 ![Prototype](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_prototype_1.jpg)
 
@@ -96,13 +98,29 @@ To be completed...
 
 ![Prototype](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_prototype_3.jpg)
 
-### Standalone Microcontroller v1.0
+### PCB v1.0
 
-The prototype v1.0 is built on a dedicated PCB with a standalone ATmega328P-20PU microcontroller in 28 pin DIP package.
+The first prototype was built on a dedicated PCB with a standalone ATmega328P-20PU microcontroller in 28 pin DIP package. The PCB was produced at home.
 
 Refer to [prototype_v1.0.md](https://github.com/4x5dm/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
 
 ![PCB](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v1.0_pcb_5.jpg)
+
+### PCB v2.0
+
+This version has a USB-to-UART IC which allows the GPS to be used as a programming cable. It was designed as a two-side PCB with SMD parts. Allthough I developed the schematics and the PCB, this version was never built.
+
+The circuit diagram of this version can be found [here](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v2.0_schematic.png). Design files are located [here](https://github.com/4x1md/vx8_gps/tree/master/pcbs/vx8_gps_prototype_v2.0).
+
+![PCB](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v2.0_pcb)
+
+### PCB v3.0
+
+This version was built on a two-sided PCB, mostly with SMD parts. Both ATmega328P microcontroller and the GPS module are SMT devices. The size of this PCB is 43.5x43.5mm and it was designed to fit a small plastic enclosure box.
+
+Refer to [prototype_v3.0.md](https://github.com/4x5dm/vx8_gps/blob/master/docs/prototype_v3.0.md) for details.
+
+![PCB](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_gps_prototype_v3.0_pcb_2.jpg)
 
 ## Field tests
 
@@ -115,14 +133,13 @@ The unit was tested in trains. Videos from the tests are available.
 
 ![GPS in train](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_test_1.jpg)
 
-
-## Plans for future develompent
+## Plans for future development
 
 1. [x] ~~Running all the system at 3.3V.~~ See [prototype_v1.0.md](https://github.com/4x5dm/vx8_gps/blob/master/docs/prototype_v1.0.md) for details.
 2. [x] ~~Reducing the microcontroller speed to 8MHz or even lower.~~ See [Release v1.0](https://github.com/4x5dm/vx8_gps/releases/tag/v1.0) ([commit 9e8273a](https://github.com/4x5dm/vx8_gps/commit/9e8273abed9b53197791b6e432649a282e6ca909)) .
 3. [ ] Adding a rechargeable battery and making the device USB chargeable.
-4. [ ] Building the project on a PCB instead of using ready modules.
-5. [ ] Assembling the device in one enclosure box.
+4. [x] ~~Building the project on a PCB instead of using ready modules.~~
+5. [x] ~~Assembling the device in one enclosure box.~~
 6. [ ] Making the module compatible with Nikon DSLRs.
 
 Optional/questionable features:
