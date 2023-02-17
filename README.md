@@ -177,7 +177,8 @@ You can aslo make a donation with PayPal:
 
 [!["Donate with PayPal"](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=NZZWZFH5ZBCCU)
 
+---
 
-73 de 4X1MD ex 4X5DM ex 4Z7DTF
+**73 de 4X1MD ex 4X5DM ex 4Z7DTF**
 
 ![73's](https://raw.githubusercontent.com/4x5dm/vx8_gps/master/docs/images/vx8_73.jpg)
